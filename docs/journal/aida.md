@@ -12,3 +12,6 @@ Format d'une entrée :
 
 ---
 
+- **Date et heure** : 2026-11-23 14:32
+- **Auteur** : Aïda
+- **Prompt** : "Je suis Aïda, architecte sécurité. Pour la tâche SEC-1 du backlog joint, propose un plan de modèle de menaces STRIDE pour notre app, en respectant le CLAUDE.md joint et en suivant mon brouillon. Pour chaque menace : identifiant, composant visé, contre-mesure, tâche du backlog associée. Signale les menaces sans tâche P1 et les points qui sont des hypothèses non testées."

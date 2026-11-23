@@ -149,22 +149,24 @@ hypothèse, jamais comme un fait.
 - P-256 ECDH + HKDF : échange et dérivation de clés
 
 ### Canal iPhone ↔ Mac
+- Protocole conçu par l'équipe avec CryptoKit (décision du 23/11).
 - Appairage par QR code, avec vérification d'une empreinte de clé.
-- Clés éphémères à chaque session (confidentialité persistante).
-- Événements signés et horodatés, avec nonce et compteur (anti-rejeu).
+- Clés ECDH éphémères à chaque session, signées par les clés d'identité
+  dont l'empreinte est celle du QR code.
+- HKDF-SHA256 avec sel et `info` fixés et documentés ; nonces AES-GCM générés par CryptoKit, jamais fixes.
+- Anti-rejeu : compteur strictement croissant par session (mécanisme principal), nonce,
+  horodatage avec tolérance de 60 s.
+- Centrale sur Mac prêté sans état persistant : appairage refait à chaque séance,
+  historique et clés purgés en fin de séance.
 
 ### Données
-- Liste de confiance chiffrée, modification protégée par Face ID.
-- Keychain en « ThisDeviceOnly », accès conditionné à Face ID.
-- Fichiers en protection « Complete ».
-- Presse-papiers local à l'appareil, avec expiration automatique.
-- Aperçu multitâche masqué quand l'app passe en arrière-plan.
-- Aucun secret ni donnée personnelle dans les logs.
+- Modification de la liste de confiance : Face ID avec repli sur le code de l'iPhone
+  (risque résiduel RR6 accepté, voir STRIDE.md).
 
 ### RGPD
-- Identifiants hachés, purge automatique, données minimisées.
-- Algorithme de hachage des identifiants : **à définir par Aida**
-- Durée de purge : **à définir par Aida**
+- Algorithme de hachage des identifiants : HMAC-SHA256, clé secrète en Keychain
+  « ThisDeviceOnly », renouvelée à chaque purge.
+- Durée de purge : 72 h.
 
 ## 7. Conventions de code Swift et tests
 
