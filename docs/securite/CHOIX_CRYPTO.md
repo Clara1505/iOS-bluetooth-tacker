@@ -1,8 +1,6 @@
 # Choix cryptographiques – Tracker Bluetooth anti-traçage
 
-> **Statut : document SEC-3, rédigé avec Claude le 23/11/2026, à relire et valider par Aïda.**
 > Ce document justifie chaque choix crypto et le relie aux menaces de `STRIDE.md`.
-> Tous les choix ont été décidés par Aïda le 23/11, sauf le transport (section 3.7), qui relève d'Onur (ARCH-2).
 > Règle de vérification (CLAUDE.md, section 5) : **aucun de ces choix n'est encore implémenté ni testé**.
 > Les comportements non vérifiés sont marqués **[Hypothèse]**. Le format exact des messages relève de la
 > spécification du protocole (tâche proposée, `docs/securite/PROTOCOLE.md`).
@@ -298,11 +296,3 @@ d'authentification (Face ID ou code) ; communication iPhone ↔ Mac sur le Wi-Fi
 | Purge | Donnée de plus de 72 h : supprimée ; donnée de moins de 72 h : conservée |
 | Premier lancement | Après installation : nouvelles clés, liste vide, aucun ancien élément du Keychain |
 | Liste de confiance | Fichier modifié : refus et aucun appareil de confiance ; ancienne version correctement signée remise en place : refus ; signature par une autre clé : refus ; annulation de Face ID et du code : modification impossible ; modification avec le code : signalée à la prochaine ouverture |
-
-## 7. Historique
-
-| Date | Auteur | Modification |
-|---|---|---|
-| 2026-11-23 | Aïda (avec Claude) | Version initiale |
-| 2026-11-23 | Aïda (avec Claude) | Purge glissante et clé HMAC stable ; proposition B pour la liste de confiance, intégrant les remarques d'Eva ; transport ; premier lancement |
-| 2026-11-23 | Aïda | Validation de la solution B, de `userPresence` et d'une clé par sens |
