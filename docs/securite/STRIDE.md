@@ -219,7 +219,8 @@ Statut : `Ouvert`, `En cours`, `Couvert` (contre-mesure implémentée **et test�
 | Point | Décision | Menaces liées |
 |---|---|---|
 | Authentification pour modifier la liste de confiance | Face ID avec repli sur le code de l'iPhone | E1, RR6 |
-| Hachage des identifiants | HMAC-SHA256, clé secrète en Keychain « ThisDeviceOnly », renouvelée à chaque purge | I5 |
+| Hachage des identifiants | HMAC-SHA256, clé secrète stable en Keychain « ThisDeviceOnly », renouvelée seulement à la réinitialisation des données | I5 |
+| Durée de purge | 72 h, purge glissante | I5 |
 | Durée de purge | 72 h | I5 |
 | Anti-rejeu | Compteur par session (principal), nonce, horodatage avec tolérance de 60 s | T2 |
 | Canal iPhone ↔ Mac | Protocole maison avec CryptoKit, clés éphémères signées par les clés d'identité | S1, T1, I1, RR7 |
