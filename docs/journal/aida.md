@@ -39,3 +39,9 @@ Format d'une entrée :
 - **Date et heure** : 2026-11-24 9:26
 - **Auteur** : Aïda
 - **Prompt** : "Je conserve l'option B"
+
+---
+
+- **Date et heure** : 2026-11-24 10:21
+- **Auteur** : Aïda
+- **Prompt** : "explique le fonctionnement du Multipeer Connectivity et les recommandations d'Apple"
