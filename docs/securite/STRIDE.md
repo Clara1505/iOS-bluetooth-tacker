@@ -1,7 +1,7 @@
 # Modèle de menaces STRIDE – Tracker Bluetooth anti-traçage
 
-> **Statut : préparé avec Claude le 23/11/2026, décisions d'Aïda intégrées (SEC-1).**
-> Les choix crypto sont justifiés dans `CHOIX_CRYPTO.md` (SEC-3).
+> **Statut : brouillon du STRIDE (SEC-1).**
+> Les notes de risque et les contre-mesures sont des **propositions**. Les choix crypto définitifs seront justifiés dans CHOIX_CRYPTO
 > Règle de vérification (CLAUDE.md, section 5) : tout comportement non testé est marqué **[Hypothèse]**.
 
 ## 1. Objet et méthode
@@ -248,12 +248,3 @@ Statut : `Ouvert`, `En cours`, `Couvert` (contre-mesure implémentée **et test�
 |---|---|
 | Reconnaissance d'un appareil de confiance malgré la rotation des identifiants | S3 (après ARCH-6) |
 | Transport (Network framework recommandé, Multipeer en alternative) ; si Multipeer : ajouter nom annoncé, invitations en masse, pair non appairé | Décision d'Onur (ARCH-2) |
-
-## 12. Historique
-
-| Date | Auteur | Modification |
-|---|---|---|
-| 2026-11-23 | Aïda (avec Claude) | Brouillon initial |
-| 2026-11-23 | Aïda (avec Claude) | Intégration des décisions SEC-3 et ARCH-7, ajout de RR6 et RR7 |
-| 2026-11-23 | Aïda (avec Claude) | Méthode de notation retenue, traçabilité de la liste de confiance (R2) |
-| 2026-11-23 | Aïda (avec Claude) | Purge glissante, clé HMAC stable, solution B pour la liste (T3, E1), ajout de I7 et RR8 |
