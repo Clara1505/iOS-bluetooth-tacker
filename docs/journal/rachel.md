@@ -19,3 +19,11 @@ avant le commit correspondant.
 - **Date et heure** : 2026-11-24 12:55
 - **Auteur** : Rachel
 - **Prompt** : Fais le journal rachel.md.
+
+- **Date et heure** : 2026-11-24 14:52
+- **Auteur** : Rachel
+- **Prompt** : Voici l'état actuel : je suis sur Windows, donc je n'ai plus accès à Xcode. Je ne peux pas lier mon compte iPhone/iCloud personnel au Mac de l'école que j'utilise pour coder, donc impossibilité de tester sur mon iPhone réel (problème connu par le professeur). Passons sur IOS-2, ensuite IOS-3 puis IOS-5. Enfin, nous ferons QA-1 et QA-2. Guide-moi pas à pas.
+
+- **Date et heure** : 2026-11-24 17:08
+- **Auteur** : Rachel
+- **Prompt** : Donne-moi les nouvelles entrées pour mon journal. *(journal rachel.md joint)*
