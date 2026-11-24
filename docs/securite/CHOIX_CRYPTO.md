@@ -76,17 +76,6 @@ au lancement, gardée en mémoire et perdue en fin de séance. L'appairage est d
   et permet d'en dériver plusieurs.
 - **AES-GCM** : chiffrement authentifié, toute modification d'un octet fait échouer le déchiffrement (T1).
 
-**Options écartées.**
-- TLS 1.3 via Network.framework avec clé pré-partagée : plus éprouvé, mais montre moins la maîtrise des
-  mécanismes, ce qui est un objectif du projet. Le risque est assumé (RR7, voir `STRIDE.md`).
-- ChaChaPoly : aussi sûr qu'AES-GCM et disponible dans CryptoKit ; AES-GCM est retenu pour être accéléré
-  matériellement sur les appareils Apple et pour utiliser la même primitive que le stockage local.
-
-**Recommandations d'implémentation (propositions).**
-- Dériver **deux clés distinctes**, une par sens (iPhone → Mac et Mac → iPhone), avec deux valeurs de `info`
-  différentes.
-- Ne jamais fournir de nonce fixe à `AES.GCM.seal` : laisser CryptoKit le générer.
-- Fixer le sel HKDF et le libellé `info` dans `PROTOCOLE.md`, et ne plus les changer sans revue.
 
 ### 3.3 Anti-rejeu
 
@@ -106,25 +95,35 @@ pendant toute la fenêtre de tolérance.
 
 ### 3.4 Hachage des identifiants : HMAC-SHA256
 
-**Décision.** Les identifiants des appareils observés sont stockés sous la forme
-`HMAC-SHA256(clé secrète, identifiant)`. La clé (256 bits) est générée sur l'iPhone et stockée dans le Keychain
-en « ThisDeviceOnly ».
+**Décision.** Les identifiants des appareils observés sont stockés sous la forme `HMAC-SHA256(clé secrète, identifiant)`. La clé (256 bits) est générée sur l'iPhone et stockée dans le Keychain
+en « ThisDeviceOnly ». Elle est **stable** : générée au premier lancement après installation, elle n'est renouvelée
+que lors d'une réinitialisation des données de l'app (décision du 23/11).
 
 **Pourquoi.**
 - Un hachage simple (SHA-256) d'un identifiant connu peut être recalculé par n'importe qui pour vérifier si un
   appareil donné a été vu. Avec une clé secrète, le haché n'a de sens que sur cet iPhone, y compris pour les
   données envoyées au Mac prêté.
 - Le haché reste identique tant que la clé ne change pas, ce qui permet la comparaison entre balayages (IOS-6).
-- Renouveler la clé rend les anciennes données impossibles à relier aux nouvelles (minimisation, RGPD).
+- La clé n'est pas renouvelée périodiquement : la purge glissante supprime déjà toute donnée de plus de 72 h,
+  et la centrale est purgée en fin de séance. Il ne reste donc pas d'ancienne donnée à rendre non reliable ;
+  la minimisation est assurée par la purge, pas par la clé.
+- Un renouvellement périodique couperait la comparaison entre balayages : un traceur vu juste avant et juste
+  après le renouvellement ne serait pas relié (faux négatif sur A1).
+- **[Hypothèse]** Les éléments du Keychain peuvent survivre à la désinstallation de l'app : au premier lancement
+  après installation, l'app supprime l'ancienne clé et en génère une nouvelle.
 
 **Option écartée.** SHA-256 simple : réversible par recalcul si l'identifiant est connu ou prévisible.
+**Options écartées pour la gestion de la clé.**
+- Renouvellement toutes les 72 h avec purge globale : crée un faux négatif à chaque renouvellement.
+- Deux clés en chevauchement : pas de rupture, mais trop complexe à coder, tester et expliquer pour un gain faible.
 
 **[Hypothèse]** L'identifiant à hacher (identifiant fourni par iOS ou champ d'une annonce Find My) dépend du
 spike ARCH-6.
 
 ### 3.5 Durée de purge : 72 h
 
-**Décision.** Les identifiants hachés, les résultats de balayage et les positions sont supprimés après 72 h.
+**Décision.** Purge glissante : chaque identifiant haché, résultat de balayage et position est supprimé
+72 h après sa collecte.
 
 **Pourquoi.**
 - Un suivi se joue sur des heures ou quelques jours : 24 h risquerait de casser la comparaison entre balayages.
@@ -166,7 +165,6 @@ mais le rend visible.
 
 | Point | Pourquoi c'est à trancher | Qui |
 |---|---|---|
-| **Purge glissante ou par période** | Renouveler la clé HMAC « à chaque purge » suppose une purge globale toutes les 72 h. Avec une purge glissante (chaque donnée supprimée 72 h après sa collecte), il n'y a pas de moment unique pour changer la clé. Proposition : clé renouvelée toutes les 72 h et suppression de toutes les données hachées avec l'ancienne ; limite : un traceur vu juste avant et juste après le renouvellement n'est pas relié. | Aïda |
 | **Lecture de la liste sans Face ID** | La liste doit être lue à chaque balayage, sans demander Face ID, mais sa modification doit l'exiger. Avec une seule clé de chiffrement, protéger la modification par le Keychain bloquerait aussi la lecture. Proposition : clé de chiffrement accessible quand l'iPhone est déverrouillé, et liste **signée** par une seconde clé Secure Enclave dont l'usage exige Face ID ou le code ; la signature est vérifiée à chaque lecture. Ainsi la protection ne repose pas seulement sur la logique de l'app. | Aïda, avec Eva (TRU-2, TRU-3) |
 | Identifiant Bluetooth à hacher | Dépend du spike | Après ARCH-6 |
 | Format exact des messages, sel et `info` HKDF | À fixer dans `PROTOCOLE.md` | Aïda et Onur |
@@ -180,6 +178,6 @@ mais le rend visible.
 | Canal | Un octet modifié : déchiffrement refusé ; message chiffré avec la clé de l'autre sens : refusé |
 | Anti-rejeu | Message rejoué, compteur inférieur ou égal, horodatage hors tolérance : rejet |
 | Hachage | Même identifiant, même clé : même haché ; clé différente : haché différent |
-| Purge | Donnée de plus de 72 h : supprimée |
+| Purge | Donnée de plus de 72 h : supprimée ; donnée de moins de 72 h : conservée ; premier lancement après installation : nouvelle clé HMAC |
 | Liste de confiance | Fichier modifié : refus et aucun appareil de confiance ; modification sans authentification : impossible |
 
