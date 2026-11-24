@@ -1,33 +1,41 @@
 # Choix cryptographiques – Tracker Bluetooth anti-traçage
 
+> **Statut : document SEC-3, rédigé avec Claude le 23/11/2026, à relire et valider par Aïda.**
 > Ce document justifie chaque choix crypto et le relie aux menaces de `STRIDE.md`.
+> Tous les choix ont été décidés par Aïda le 23/11, sauf le transport (section 3.7), qui relève d'Onur (ARCH-2).
 > Règle de vérification (CLAUDE.md, section 5) : **aucun de ces choix n'est encore implémenté ni testé**.
-> Les détails d'implémentation sont des propositions ; le format exact des messages relève de la
+> Les comportements non vérifiés sont marqués **[Hypothèse]**. Le format exact des messages relève de la
 > spécification du protocole (tâche proposée, `docs/securite/PROTOCOLE.md`).
 
 ## 1. Principes
 
 - **CryptoKit uniquement** : aucune primitive cryptographique écrite par l'équipe, aucune dépendance tierce.
-- **Le réseau local n'est pas de confiance** : chaque message est chiffré et authentifié.
+- **Le réseau n'est pas de confiance**, quel que soit le transport : chaque message est chiffré et authentifié
+  par notre protocole.
 - **Échouer en sécurité** : toute erreur de vérification, de déchiffrement ou de format entraîne le rejet
   ou le verrouillage, jamais une ouverture.
+- **Authentification liée à une clé** : conformément au principe du MASTG (test MASTG-TEST-0266),
+  l'authentification de l'utilisateur est imposée par une clé protégée par le système, et non par une simple
+  condition dans le code de l'app.
 - **Aléa** : uniquement celui de CryptoKit (génération de clés, nonces) ou de `SecRandomCopyBytes`.
 - **Clés** : jamais dans le code, jamais dans le dépôt, jamais dans les logs.
 
 ## 2. Récapitulatif
 
-| Usage | Choix | Menaces couvertes |
-|---|---|---|
-| Signature des événements | P-256 ECDSA, clé Secure Enclave non exportable | S2, R1, T1 |
-| Appairage | QR code contenant l'empreinte SHA-256 de la clé d'identité du Mac, confirmation par l'utilisateur | S1, S4, E2 |
-| Échange de clés | P-256 ECDH éphémère, clés éphémères signées par les clés d'identité | S1, I1 |
-| Dérivation de clés | HKDF-SHA256 | I1 |
-| Chiffrement du canal | AES-256-GCM | T1, I1 |
-| Anti-rejeu | Compteur par session, nonce, horodatage (tolérance 60 s) | T2 |
-| Hachage des identifiants | HMAC-SHA256, clé secrète en Keychain « ThisDeviceOnly » | I5 |
-| Durée de purge | 72 h | I5 |
-| Stockage de la liste de confiance | AES-256-GCM, clé en Keychain « ThisDeviceOnly » | T3, I6 |
-| Modification de la liste | Face ID avec repli sur le code de l'iPhone, historique des modifications | E1, R2 (risque résiduel RR6) |
+| Usage | Choix | Statut | Menaces couvertes |
+|---|---|---|---|
+| Signature des événements | P-256 ECDSA, clé Secure Enclave non exportable | Décidé | S2, R1, T1 |
+| Appairage | QR code contenant l'empreinte SHA-256 de la clé d'identité du Mac, code court confirmé par l'utilisateur | Décidé | S1, S4, E2 |
+| Échange de clés | P-256 ECDH éphémère, clés éphémères signées par les clés d'identité | Décidé | S1, I1 |
+| Dérivation de clés | HKDF-SHA256, une clé par sens | Décidé | I1 |
+| Chiffrement du canal | AES-256-GCM | Décidé | T1, I1 |
+| Anti-rejeu | Compteur par session, nonce, horodatage (tolérance 60 s) | Décidé | T2 |
+| Transport | Network framework avec Bonjour recommandé (Multipeer Connectivity en alternative) | Recommandation, décision d'Onur (ARCH-2) | – (transport non fiable) |
+| Hachage des identifiants | HMAC-SHA256, clé secrète stable en Keychain « ThisDeviceOnly » | Décidé | I5 |
+| Durée de purge | 72 h, purge glissante | Décidé | I5 |
+| Confidentialité de la liste de confiance | AES-256-GCM, clé en Keychain « ThisDeviceOnly » | Décidé | I6 |
+| Intégrité de la liste de confiance | Signature par une clé Secure Enclave dédiée, protégée par `userPresence`, avec numéro de version | Décidé | T3, E1 |
+| Modification de la liste | Face ID avec repli sur le code de l'iPhone, historique des modifications | Décidé | E1, R2 (risques résiduels RR6, RR8) |
 
 ## 3. Justification détaillée
 
@@ -56,9 +64,9 @@ au lancement, gardée en mémoire et perdue en fin de séance. L'appairage est d
 
 **Étapes (principe, détail dans `PROTOCOLE.md`).**
 1. **Appairage.** Le Mac affiche un QR code qui contient l'empreinte SHA-256 de sa clé d'identité publique
-   (et l'adresse de connexion). L'iPhone vérifie que la clé reçue du Mac correspond à cette empreinte.
-   Une empreinte courte est affichée sur les deux écrans et confirmée par l'utilisateur, ce qui authentifie
-   aussi la clé de l'iPhone auprès du Mac.
+   et l'information de connexion (selon le transport retenu, voir 3.7). L'iPhone vérifie que la clé reçue du Mac
+   correspond à cette empreinte. Un code court est affiché sur les deux écrans et confirmé par l'utilisateur,
+   ce qui authentifie aussi la clé de l'iPhone auprès du Mac.
 2. **Échange de clés.** À chaque session, chaque côté génère une paire ECDH éphémère
    (`P256.KeyAgreement.PrivateKey`) et **signe sa clé publique éphémère avec sa clé d'identité**.
    Chaque côté vérifie la signature de l'autre avant de poursuivre.
@@ -76,6 +84,18 @@ au lancement, gardée en mémoire et perdue en fin de séance. L'appairage est d
   et permet d'en dériver plusieurs.
 - **AES-GCM** : chiffrement authentifié, toute modification d'un octet fait échouer le déchiffrement (T1).
 
+**Options écartées.**
+- **TLS 1.3 via Network framework avec clé pré-partagée** : plus éprouvé, mais montre moins la maîtrise des
+  mécanismes, ce qui est un objectif du projet. Le risque est assumé (RR7 dans `STRIDE.md`) et compensé par
+  une documentation étape par étape et les tests QA-3.
+- **ChaChaPoly** : aussi sûr qu'AES-GCM et disponible dans CryptoKit ; AES-GCM est retenu pour être accéléré
+  matériellement sur les appareils Apple et pour utiliser la même primitive que le stockage local.
+
+**Règles d'implémentation (décidées le 23/11).**
+- Dériver **deux clés distinctes**, une par sens (iPhone → Mac et Mac → iPhone), avec deux valeurs de `info`
+  différentes, pour qu'un message ne puisse pas être renvoyé à son émetteur.
+- Ne jamais fournir de nonce fixe à `AES.GCM.seal` : laisser CryptoKit le générer.
+- Fixer le sel HKDF et le libellé `info` dans `PROTOCOLE.md`, et ne plus les changer sans revue.
 
 ### 3.3 Anti-rejeu
 
@@ -95,9 +115,10 @@ pendant toute la fenêtre de tolérance.
 
 ### 3.4 Hachage des identifiants : HMAC-SHA256
 
-**Décision.** Les identifiants des appareils observés sont stockés sous la forme `HMAC-SHA256(clé secrète, identifiant)`. La clé (256 bits) est générée sur l'iPhone et stockée dans le Keychain
+**Décision.** Les identifiants des appareils observés sont stockés sous la forme
+`HMAC-SHA256(clé secrète, identifiant)`. La clé (256 bits) est générée sur l'iPhone et stockée dans le Keychain
 en « ThisDeviceOnly ». Elle est **stable** : générée au premier lancement après installation, elle n'est renouvelée
-que lors d'une réinitialisation des données de l'app (décision du 23/11).
+que lors d'une réinitialisation des données de l'app (voir 3.8).
 
 **Pourquoi.**
 - Un hachage simple (SHA-256) d'un identifiant connu peut être recalculé par n'importe qui pour vérifier si un
@@ -109,18 +130,16 @@ que lors d'une réinitialisation des données de l'app (décision du 23/11).
   la minimisation est assurée par la purge, pas par la clé.
 - Un renouvellement périodique couperait la comparaison entre balayages : un traceur vu juste avant et juste
   après le renouvellement ne serait pas relié (faux négatif sur A1).
-- **[Hypothèse]** Les éléments du Keychain peuvent survivre à la désinstallation de l'app : au premier lancement
-  après installation, l'app supprime l'ancienne clé et en génère une nouvelle.
 
-**Option écartée.** SHA-256 simple : réversible par recalcul si l'identifiant est connu ou prévisible.
-**Options écartées pour la gestion de la clé.**
-- Renouvellement toutes les 72 h avec purge globale : crée un faux négatif à chaque renouvellement.
+**Options écartées.**
+- SHA-256 simple : réversible par recalcul si l'identifiant est connu ou prévisible.
+- Renouvellement de la clé toutes les 72 h avec purge globale : crée un faux négatif à chaque renouvellement.
 - Deux clés en chevauchement : pas de rupture, mais trop complexe à coder, tester et expliquer pour un gain faible.
 
 **[Hypothèse]** L'identifiant à hacher (identifiant fourni par iOS ou champ d'une annonce Find My) dépend du
 spike ARCH-6.
 
-### 3.5 Durée de purge : 72 h
+### 3.5 Durée de purge : 72 h, purge glissante
 
 **Décision.** Purge glissante : chaque identifiant haché, résultat de balayage et position est supprimé
 72 h après sa collecte.
@@ -134,21 +153,112 @@ spike ARCH-6.
 **Exception.** L'historique des modifications de la liste de confiance (R2) concerne les appareils de
 l'utilisateur lui-même : il conserve les 20 dernières entrées, sans limite de durée.
 
-### 3.6 Liste de confiance : stockage et modification
+### 3.6 Liste de confiance : stockage, intégrité et modification
 
-**Décision.**
-- Liste et historique des modifications chiffrés avec AES-256-GCM, clé stockée dans le Keychain en
-  « ThisDeviceOnly », fichiers en protection « Complete ».
-- Modification soumise à Face ID avec repli sur le code de l'iPhone.
-- Chaque modification est inscrite dans l'historique avec le mode d'authentification ; une modification faite
-  avec le code est signalée à la prochaine ouverture.
+**Décidé.**
+- Modification soumise à Face ID avec repli sur le code de l'iPhone (E1).
+- Historique des modifications (R2) : date, action, appareil, mode d'authentification ; 20 dernières entrées ;
+  non supprimable depuis l'interface ; toute modification faite avec le code est signalée à la prochaine ouverture.
 
-**Pourquoi.** « ThisDeviceOnly » empêche la clé de quitter l'appareil (pas de sauvegarde ni de migration).
-AES-GCM détecte toute altération du fichier (T3) ; en cas d'échec de déchiffrement, l'app ne considère aucun
-appareil comme de confiance (échec en sécurité).
+**Décidé le 23/11 (solution B, avec les remarques d'Eva, qui porte TRU-2 et TRU-3).**
 
-**Risque résiduel.** Un proche qui connaît le code peut modifier la liste (RR6). L'historique ne l'empêche pas,
-mais le rend visible.
+*Confidentialité.* La liste **et** son historique sont chiffrés ensemble avec AES-256-GCM. La clé AES est stockée
+dans le Keychain en « accessible quand l'iPhone est déverrouillé, ThisDeviceOnly », sans exigence
+d'authentification, pour pouvoir lire la liste à chaque balayage. Fichiers en protection « Complete ».
+
+*Intégrité.* Une **seconde clé**, de signature P-256, est créée dans la Secure Enclave, distincte de la clé
+d'identité du canal. Son contrôle d'accès est `userPresence` : la Secure Enclave exige Face ID ou le code de
+l'iPhone avant chaque signature. Le bloc qui représente cette clé et sa clé publique sont stockés dans le
+Keychain en « ThisDeviceOnly », jamais à côté du fichier : sinon un attaquant pourrait remplacer le fichier et
+la clé publique ensemble.
+
+*Données signées.* La signature porte, dans cet ordre, sur : un libellé fixe (`liste-confiance-v1`), le numéro
+de version, puis le bloc chiffré complet produit par AES-GCM (nonce, données chiffrées, étiquette). Ainsi,
+ni la version ni le contenu ne peuvent être modifiés séparément, et une signature produite pour un autre usage
+ne peut pas être réutilisée ici.
+
+*Numéro de version.* Il est inclus dans les données signées et recopié dans le Keychain après chaque
+modification. À la lecture, une liste dont la version est inférieure à celle du Keychain est refusée : cela
+empêche de remettre en place une ancienne liste correctement signée. Une version supérieure, avec une
+signature valide, est acceptée et recopiée dans le Keychain (cas d'une interruption entre l'écriture du
+fichier et la mise à jour du Keychain).
+
+*Lecture (à chaque balayage).* Déchiffrer, vérifier la signature avec la clé publique du Keychain, vérifier la
+version. Aucune authentification n'est demandée. En cas d'échec, aucun appareil n'est considéré comme de
+confiance et l'utilisateur est prévenu (échec en sécurité).
+
+*Modification.* Ajouter l'entrée d'historique, rechiffrer, incrémenter la version, signer (la Secure Enclave
+demande Face ID ou le code), écrire le fichier, puis mettre à jour la version dans le Keychain.
+
+**Pourquoi.**
+- La protection ne repose pas sur une condition dans le code de l'app : sans Face ID ni code, il est impossible
+  de produire une liste valide. Une authentification par LocalAuthentication seule (`evaluatePolicy`) se
+  contourne par instrumentation (MASTG-TEST-0266).
+- Une clé **asymétrique** est nécessaire : avec une clé symétrique (HMAC), la même clé sert à créer et à
+  vérifier ; si elle exige Face ID pour signer, elle l'exige aussi pour vérifier, donc à chaque balayage.
+
+**Choix du contrôle d'accès : `userPresence` plutôt que `biometryCurrentSet` (décidé le 23/11).**
+`biometryCurrentSet` invaliderait la clé si un visage ou un doigt est ajouté, mais seul il exige la biométrie
+sans repli sur le code, ce qui contredit E1. Et puisque E1 autorise le code, une personne qui connaît le code
+peut déjà signer : `biometryCurrentSet` ne la gênerait pas davantage, tout en imposant un parcours de
+recréation de la clé. `userPresence` est donc cohérent avec E1.
+
+**Options écartées.**
+- Solution A (une seule clé AES et `evaluatePolicy` avant modification) : authentification contournable par
+  instrumentation.
+- Solution C (Face ID à chaque ouverture de l'app) : gêne l'usage principal, un contrôle rapide.
+
+**Limites et risques résiduels.**
+- **RR6** : une personne qui connaît le code peut modifier la liste ; l'historique le rend visible, sans l'empêcher.
+- **RR8** : sur un iPhone déverrouillé, la liste est lisible sans Face ID (I7). La signature empêche la
+  falsification, pas la lecture ; la liste ne révèle que les noms des appareils de l'utilisateur.
+- Sur un iPhone jailbreaké, la vérification elle-même peut être contournée (hors modèle, H3).
+- Le MASTG prévoit un test sur les API qui autorisent un repli vers une authentification non biométrique :
+  la red team pourra relever le repli sur le code. Justification : RR6 et l'historique R2.
+
+**[Hypothèses à tester].**
+- Comportement d'une clé Secure Enclave protégée par `userPresence` : invite Face ID au moment de signer,
+  repli sur le code.
+- Lecture de la clé publique sans authentification.
+- Moyen fiable de savoir si l'utilisateur s'est authentifié par Face ID ou par le code, pour l'historique R2.
+  Piste : évaluer d'abord la biométrie seule avec un `LAContext`, puis le code en cas d'échec, et transmettre
+  ce contexte à l'opération de signature. Le mode enregistré dépend alors de la logique de l'app.
+
+### 3.7 Transport (recommandation sécurité ; décision d'Onur en ARCH-2)
+
+**Recommandation.** Network framework, avec découverte par Bonjour : le Mac annonce un service, l'iPhone s'y
+connecte. C'est la voie recommandée par Apple, avec plus de contrôle et un débogage plus simple.
+
+**Alternative acceptable.** Multipeer Connectivity, à condition de considérer son chiffrement comme
+inexistant dans notre modèle.
+- Apple recommande désormais Network framework (note technique TN3213 sur la migration).
+- Il active toujours le Wi-Fi direct entre appareils, ce qui peut ralentir le réseau.
+- Son fonctionnement est peu documenté : sa sécurité ne peut pas être justifiée dans le dossier ; sans
+  certificats, son chiffrement ne protège pas contre l'homme du milieu.
+- **[Hypothèse]** S'il utilise le Bluetooth, il pourrait interférer avec le balayage BLE.
+- Menaces supplémentaires : nom annoncé visible par les appareils proches (utiliser un nom aléatoire),
+  invitations en masse (rejet et limitation de débit), pair connecté non appairé (seul l'appairage QR donne
+  le statut de pair de confiance).
+
+**Dans les deux cas.** Le transport est traité comme non fiable : notre protocole (3.2, 3.3) s'applique
+intégralement par-dessus.
+
+**[Hypothèse à tester en priorité le 24/11]** Le Wi-Fi de l'école laisse-t-il l'iPhone et le Mac prêté
+communiquer ? Les réseaux de campus isolent souvent les appareils entre eux.
+
+### 3.8 Premier lancement après installation
+
+**Décision.** Au premier lancement après installation, l'app supprime **tous** ses éléments du Keychain
+(clé AES de la liste, clé HMAC, bloc de la clé Secure Enclave de la liste, clé publique associée, numéro de
+version, clé d'identité si elle est conservée) puis repart d'une liste de confiance vide.
+
+**Pourquoi.**
+- **[Hypothèse]** Les éléments du Keychain peuvent survivre à la désinstallation de l'app, alors que les
+  fichiers sont supprimés. Sans ce nettoyage, d'anciennes clés et un ancien numéro de version resteraient
+  sans les données correspondantes.
+- Perdre la liste va dans le sens de la sécurité : une liste vide signifie que tous les appareils sont inconnus,
+  donc plus d'alertes, pas moins. Un attaquant qui réinstallerait l'app pour effacer l'historique R2 effacerait
+  aussi son traceur de la liste.
 
 ## 4. Algorithmes et pratiques interdits
 
@@ -160,14 +270,20 @@ mais le rend visible.
 | Aléa non cryptographique (`random()`, `Int.random` pour des clés) | Prévisible |
 | Clé ou secret en dur | Exposé dans le binaire et le dépôt |
 | Secret ECDH utilisé directement comme clé | Doit passer par HKDF |
+| Authentification par `evaluatePolicy` seule pour protéger une donnée | Contournable par instrumentation |
+| Clé publique de vérification stockée à côté des données signées | Remplaçable en même temps que les données |
 
 ## 5. Points ouverts
 
 | Point | Pourquoi c'est à trancher | Qui |
 |---|---|---|
-| **Lecture de la liste sans Face ID** | La liste doit être lue à chaque balayage, sans demander Face ID, mais sa modification doit l'exiger. Avec une seule clé de chiffrement, protéger la modification par le Keychain bloquerait aussi la lecture. Proposition : clé de chiffrement accessible quand l'iPhone est déverrouillé, et liste **signée** par une seconde clé Secure Enclave dont l'usage exige Face ID ou le code ; la signature est vérifiée à chaque lecture. Ainsi la protection ne repose pas seulement sur la logique de l'app. | Aïda, avec Eva (TRU-2, TRU-3) |
+| Transport | Recommandation en 3.7 | Onur (ARCH-2) |
 | Identifiant Bluetooth à hacher | Dépend du spike | Après ARCH-6 |
 | Format exact des messages, sel et `info` HKDF | À fixer dans `PROTOCOLE.md` | Aïda et Onur |
+
+**Hypothèses à vérifier sur les iPhones** : persistance du Keychain après désinstallation ; comportement de
+`userPresence` sur une clé Secure Enclave ; lecture de la clé publique sans authentification ; détection du mode
+d'authentification (Face ID ou code) ; communication iPhone ↔ Mac sur le Wi-Fi de l'école.
 
 ## 6. Tests associés (QA-3, SEC-6)
 
@@ -177,7 +293,16 @@ mais le rend visible.
 | Appairage | Clé du Mac différente de l'empreinte du QR : refus ; QR malformé : rejet sans plantage |
 | Canal | Un octet modifié : déchiffrement refusé ; message chiffré avec la clé de l'autre sens : refusé |
 | Anti-rejeu | Message rejoué, compteur inférieur ou égal, horodatage hors tolérance : rejet |
+| Transport | Pair connecté mais non appairé : aucune donnée acceptée ; tentatives de connexion en masse : centrale utilisable |
 | Hachage | Même identifiant, même clé : même haché ; clé différente : haché différent |
-| Purge | Donnée de plus de 72 h : supprimée ; donnée de moins de 72 h : conservée ; premier lancement après installation : nouvelle clé HMAC |
-| Liste de confiance | Fichier modifié : refus et aucun appareil de confiance ; modification sans authentification : impossible |
+| Purge | Donnée de plus de 72 h : supprimée ; donnée de moins de 72 h : conservée |
+| Premier lancement | Après installation : nouvelles clés, liste vide, aucun ancien élément du Keychain |
+| Liste de confiance | Fichier modifié : refus et aucun appareil de confiance ; ancienne version correctement signée remise en place : refus ; signature par une autre clé : refus ; annulation de Face ID et du code : modification impossible ; modification avec le code : signalée à la prochaine ouverture |
 
+## 7. Historique
+
+| Date | Auteur | Modification |
+|---|---|---|
+| 2026-11-23 | Aïda (avec Claude) | Version initiale |
+| 2026-11-23 | Aïda (avec Claude) | Purge glissante et clé HMAC stable ; proposition B pour la liste de confiance, intégrant les remarques d'Eva ; transport ; premier lancement |
+| 2026-11-23 | Aïda | Validation de la solution B, de `userPresence` et d'une clé par sens |
