@@ -1,6 +1,6 @@
 import Foundation
-#if canImport(Combine)
-import Combine
+#if canImport(Observation)
+import Observation
 #endif
 
 /// Vue-Modèle de la centrale Mac (architecture MVVM, `MAC-1` et préparation `MAC-7`).
@@ -11,6 +11,9 @@ import Combine
 ///   dans un fichier ni dans `UserDefaults` (`ARCH-7`, menace `I4`).
 /// - Appliquer un plafond en mémoire sur le nombre d'alertes conservées pendant la séance (contre `D2`).
 /// - Fournir la purge immédiate en mémoire pour la fin de séance (`MAC-7`, menace `I4`).
+#if canImport(Observation)
+@Observable
+#endif
 public final class CentraleMacViewModel {
     /// Plafond de sécurité du nombre d'alertes gardées en mémoire vive pendant une séance (contre `D2`).
     public static let nombreMaxAlertesEnMemoire = 500
@@ -70,17 +73,35 @@ public final class CentraleMacViewModel {
     /// Relie les événements du service réseau à l'état en mémoire du Vue-Modèle.
     private func configurerRappelsService() {
         serviceReception.surChangementEtat = { [weak self] nouvelEtat in
-            self?.etatServeur = nouvelEtat
+            guard let self = self else { return }
+            self.executerSurFilPrincipal {
+                self.etatServeur = nouvelEtat
+            }
         }
 
         serviceReception.surReceptionAlerte = { [weak self] nouvelleAlerte in
-            self?.enregistrerAlerteEnMemoire(nouvelleAlerte)
+            guard let self = self else { return }
+            self.executerSurFilPrincipal {
+                self.enregistrerAlerteEnMemoire(nouvelleAlerte)
+            }
         }
 
         serviceReception.surRejetTrame = { [weak self] erreur in
             guard let self = self else { return }
-            self.nombreTramesRejetees += 1
-            self.derniereErreurTransport = erreur
+            self.executerSurFilPrincipal {
+                self.nombreTramesRejetees += 1
+                self.derniereErreurTransport = erreur
+            }
+        }
+    }
+
+    /// Exécute la mise à jour d'état directement si l'appel est déjà sur le thread principal (ex. tests unitaires),
+    /// ou la bascule sur `DispatchQueue.main` si elle provient de la file réseau en arrière-plan.
+    private func executerSurFilPrincipal(_ action: @escaping () -> Void) {
+        if Thread.isMainThread {
+            action()
+        } else {
+            DispatchQueue.main.async(execute: action)
         }
     }
 

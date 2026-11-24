@@ -1,6 +1,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
+@testable import CentraleMacCore
 
 /// Bouchon (*mock*) du service de réception d'alertes pour tester `CentraleMacViewModel` en isolation.
 ///
