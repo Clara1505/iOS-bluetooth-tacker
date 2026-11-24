@@ -4,18 +4,18 @@ Chaque entrée contient la date et l'heure, l'auteur et le prompt envoyé à l'I
 (sans secret ni donnée réelle). Les entrées sont ajoutées après chaque session,
 avant le commit correspondant.
 
-- **Date et heure** : 2026-11-24 HH:MM
+- **Date et heure** : 2026-11-24 09:48
 - **Auteur** : Rachel
 - **Prompt** : Commençons par les issues ARCH-6 et IOS-1 / 2 / 3. Pour éviter de bloquer les autres membres, faisons en priorité ces issues.
 
-- **Date et heure** : 2026-11-24 HH:MM
+- **Date et heure** : 2026-11-24 10:01
 - **Auteur** : Rachel
 - **Prompt** : Donne le planning de ces issues à partir de l'heure actuelle. Nous n'avons pas d'AirTag pour l'instant, donc faisons sans le spike de l'ARCH-6. En fonction, dis-moi quoi faire et dire aux membres en premier pour ne pas les bloquer.
 
-- **Date et heure** : 2026-11-24 HH:MM
+- **Date et heure** : 2026-11-24 10:17
 - **Auteur** : Rachel
 - **Prompt** : Aide-moi pas à pas à faire IOS-1. IOS-1 (#28) : projet Xcode, cible iOS 17, Info.plist Bluetooth, cible de test Swift Testing (QA-1), `AppareilDetecte`, `ServiceBalayage`, faux service
 
-- **Date et heure** : 2026-11-24 HH:MM
+- **Date et heure** : 2026-11-24 12:55
 - **Auteur** : Rachel
 - **Prompt** : Fais le journal rachel.md.
