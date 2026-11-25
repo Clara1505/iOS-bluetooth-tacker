@@ -11,7 +11,8 @@ import SwiftUI
 struct IOSBluetoothTrackerApp: App {
     var body: some Scene {
         WindowGroup {
-            BalayageVue(service: ServiceBalayageBluetooth())
-        }
+    BalayageVue(service: ServiceBalayageBluetooth())
+        .masquerApercuMultitache()
+}
     }
 }
