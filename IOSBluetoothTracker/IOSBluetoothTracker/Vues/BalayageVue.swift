@@ -1,8 +1,15 @@
+//
+//  BalayageVue.swift
+//  IOSBluetoothTracker
+//
+
 import SwiftUI
 
+/// Écran principal : bouton « Contrôle de sécurité » et résultat du dernier contrôle.
 struct BalayageVue: View {
     @State private var vueModele: BalayageVueModele
 
+    /// - Parameter service: service de balayage à utiliser.
     init(service: any ServiceBalayage) {
         _vueModele = State(initialValue: BalayageVueModele(service: service))
     }
@@ -22,6 +29,7 @@ struct BalayageVue: View {
             case .complet(let appareils):
                 Text(appareils.isEmpty ? "Aucun appareil détecté" : "\(appareils.count) appareil(s) détecté(s)")
             case .controleImpossible:
+                // D4 : jamais « aucun appareil » quand le contrôle n'a pas abouti.
                 Text("Contrôle impossible")
             case nil:
                 EmptyView()
@@ -31,6 +39,8 @@ struct BalayageVue: View {
     }
 }
 
+#if DEBUG
 #Preview {
     BalayageVue(service: FauxServiceBalayage(resultat: .controleImpossible(.bluetoothCoupe)))
 }
+#endif
