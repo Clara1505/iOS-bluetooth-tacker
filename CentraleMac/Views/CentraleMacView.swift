@@ -33,6 +33,10 @@ public struct CentraleMacView: View {
         }
         .padding(20)
         .frame(minWidth: 760, minHeight: 600)
+        .onDisappear {
+            // Purge automatique dès que la fenêtre de la centrale est fermée sur le Mac prêté (MAC-7, I4, C3).
+            viewModel.purgerLorsDeLaFermeture()
+        }
     }
 
     // MARK: - Sous-vues
@@ -248,6 +252,12 @@ public struct CentraleMacView: View {
             .frame(maxWidth: 420)
 
             Spacer()
+
+            if let datePurge = viewModel.dateDernierePurge {
+                Text("Purge RAM : \(datePurge.formatted(date: .omitted, time: .standard))")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.green)
+            }
 
             Button(role: .destructive) {
                 viewModel.purgerHistoriqueSession()
