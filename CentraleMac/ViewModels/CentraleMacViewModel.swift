@@ -3,6 +3,14 @@ import Foundation
 import Observation
 #endif
 
+/// Motif ayant déclenché une purge complète de la centrale Mac (`MAC-7`).
+public enum MotifPurgeCentrale: String, Equatable, Sendable {
+    /// Purge déclenchée manuellement par l'utilisateur via le bouton de l'interface.
+    case actionUtilisateur
+    /// Purge déclenchée automatiquement lors de la fermeture de la fenêtre ou de l'application (`C3`).
+    case fermetureApplication
+}
+
 /// Vue-Modèle de la centrale Mac (architecture MVVM, `MAC-1`, `MAC-2`, `MAC-3`, `MAC-4` et `MAC-7`).
 ///
 /// Responsabilités :
@@ -14,7 +22,8 @@ import Observation
 /// - Conserver l'historique des alertes reçues et toutes les clés **uniquement en mémoire vive (RAM)**,
 ///   sans aucune écriture dans un fichier ni dans `UserDefaults` (`ARCH-7`, menace `I4`).
 /// - Appliquer un plafond en mémoire sur le nombre d'alertes conservées pendant la séance (contre `D2`).
-/// - Fournir la purge immédiate en mémoire (historique + état anti-rejeu + clés de session + clés d'appairage) pour la fin de séance (`MAC-7`, menace `I4`).
+/// - Fournir la purge immédiate en mémoire (historique + état anti-rejeu + clés de session + clés d'appairage + arrêt réseau)
+///   sur action de l'utilisateur **et** automatiquement à la fermeture de l'app (`MAC-7`, menace `I4`, remarque `C3`).
 #if canImport(Observation)
 @Observable
 #endif
@@ -40,6 +49,12 @@ public final class CentraleMacViewModel {
     public private(set) var derniereErreurTransport: ErreurTransportCentrale?
     /// Dernière erreur de vérification d'événement signé / anti-rejeu relevée (`MAC-4`).
     public private(set) var derniereErreurEvenementSigne: ErreurEvenementSigneCrypto?
+    /// Nombre total de purges complètes exécutées au cours du cycle de vie de l'application (`MAC-7`).
+    public private(set) var nombrePurgesEffectuees: Int = 0
+    /// Date de la dernière purge effectuée (`MAC-7`).
+    public private(set) var dateDernierePurge: Date?
+    /// Motif de la dernière purge effectuée (`actionUtilisateur` ou `fermetureApplication`, `MAC-7` / `C3`).
+    public private(set) var dernierMotifPurge: MotifPurgeCentrale?
 
     /// Service réseau injecté via son protocole (permet l'injection d'un bouchon dans les tests unitaires).
     private let serviceReception: ServiceReceptionAlertesProtocol
@@ -73,6 +88,14 @@ public final class CentraleMacViewModel {
         self.etatCanalChiffre = canal.etat
         self.dernierCompteurAntiRejeu = verificateurEvenements.dernierCompteurAccepte
         configurerRappelsService()
+    }
+
+    deinit {
+        // Filet de sécurité supplémentaire (C3, I4) : purge des structures lors de la désallocation du ViewModel.
+        serviceEvenementsSignes.reinitialiserEtatAntiRejeu()
+        serviceCanalChiffre.purgerCanalEnMemoire()
+        serviceAppairage.purgerClesEnMemoire()
+        serviceReception.arreterEcoute()
     }
 
     /// Démarre l'écoute des alertes entrantes sur le réseau local.
@@ -221,23 +244,75 @@ public final class CentraleMacViewModel {
         }
     }
 
-    // MARK: - Purge de fin de séance (MAC-1 / MAC-2 / MAC-3 / MAC-4 / MAC-7)
+    // MARK: - Purge de fin de séance (MAC-7, menace I4, remarque C3)
+
+    /// Indique si la centrale ne contient plus aucune donnée sensible ni clé en mémoire vive (`MAC-7`).
+    public var estSessionTotalementPurgee: Bool {
+        alertesRecues.isEmpty &&
+        dernierCompteurAntiRejeu == 0 &&
+        serviceEvenementsSignes.dernierCompteurAccepte == 0 &&
+        serviceEvenementsSignes.nombreNoncesVus == 0 &&
+        !serviceCanalChiffre.estOuvert &&
+        etatCanalChiffre == .ferme &&
+        !serviceAppairage.estAppaire &&
+        serviceAppairage.clePubliqueIPhoneAppaire == nil &&
+        serviceAppairage.clePubliqueIdentiteMac == nil &&
+        etatAppairage == .nonAppaire
+    }
 
     /// Purge intégralement l'historique des alertes, l'état anti-rejeu (compteur et nonces),
     /// les clés de session du canal chiffré, les clés d'appairage et les compteurs en mémoire vive (`MAC-7`).
     ///
     /// Menace STRIDE visée : `I4` (aucune donnée ni clé laissée à l'utilisateur suivant du Mac prêté).
-    public func purgerHistoriqueSession() {
-        alertesRecues.removeAll()
+    ///
+    /// - Parameters:
+    ///   - motif: Motif de la purge (`.actionUtilisateur` par défaut, ou `.fermetureApplication`).
+    ///   - arreterReseau: Si `true`, ferme également l'écouteur TCP et toutes les connexions actives.
+    public func purgerHistoriqueSession(
+        motif: MotifPurgeCentrale = .actionUtilisateur,
+        arreterReseau: Bool = false
+    ) {
+        // 1. Effacement de l'historique des alertes et des compteurs en RAM (MAC-1).
+        alertesRecues.removeAll(keepingCapacity: false)
         nombreTramesRejetees = 0
         derniereErreurTransport = nil
         derniereErreurEvenementSigne = nil
+
+        // 2. Réinitialisation du compteur anti-rejeu et de la table des nonces en RAM (MAC-4).
         serviceEvenementsSignes.reinitialiserEtatAntiRejeu()
         dernierCompteurAntiRejeu = serviceEvenementsSignes.dernierCompteurAccepte
+
+        // 3. Destruction des clés symétriques directionnelles AES-256 en RAM (MAC-3).
         serviceCanalChiffre.purgerCanalEnMemoire()
         etatCanalChiffre = serviceCanalChiffre.etat
+
+        // 4. Destruction de la clé privée d'identité du Mac, de la clé publique de l'iPhone et du QR code en RAM (MAC-2).
         serviceAppairage.purgerClesEnMemoire()
         etatAppairage = serviceAppairage.etat
+
+        // 5. Nettoyage défensif des caches volatiles du processus sur le Mac prêté (I4).
+        URLCache.shared.removeAllCachedResponses()
+        if let identifiantBundle = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: identifiantBundle)
+        }
+
+        // 6. Arrêt optionnel de l'écouteur TCP (systématique lors de la fermeture de l'app).
+        if arreterReseau {
+            serviceReception.arreterEcoute()
+            etatServeur = .arrete
+        }
+
+        // 7. Traçabilité de la purge en mémoire pour confirmation visuelle dans l'interface.
+        nombrePurgesEffectuees += 1
+        dateDernierePurge = Date()
+        dernierMotifPurge = motif
+    }
+
+    /// Déclenche la purge complète de fin de séance lors de la fermeture de la fenêtre ou de l'application (`MAC-7`, `C3`).
+    ///
+    /// Coupe l'écouteur TCP et détruit l'intégralité de l'historique et des clés en mémoire vive.
+    public func purgerLorsDeLaFermeture() {
+        purgerHistoriqueSession(motif: .fermetureApplication, arreterReseau: true)
     }
 
     /// Retourne les alertes filtrées selon un niveau de gravité optionnel (`nil` retourne tout l'historique).
