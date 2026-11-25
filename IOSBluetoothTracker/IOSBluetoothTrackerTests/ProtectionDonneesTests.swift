@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 import UIKit
 import Testing
-@testable import TrackerBluetooth
+@testable import IOSBluetoothTracker
 
 @Suite("Protections des données (TRU-4)")
 struct ProtectionDonneesTests {
