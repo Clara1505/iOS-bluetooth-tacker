@@ -9,9 +9,12 @@ import SwiftUI
 struct BalayageVue: View {
     @State private var vueModele: BalayageVueModele
 
-    /// - Parameter service: service de balayage à utiliser.
-    init(service: any ServiceBalayage) {
-        _vueModele = State(initialValue: BalayageVueModele(service: service))
+    /// - Parameters:
+    ///   - service: service de balayage à utiliser.
+    ///   - verificateur: vérificateur de la liste de confiance, ou `nil` si elle n'est pas disponible
+    ///     (tout appareil est alors traité comme inconnu).
+    init(service: any ServiceBalayage, verificateur: VerificateurConfiance? = nil) {
+        _vueModele = State(initialValue: BalayageVueModele(service: service, verificateur: verificateur))
     }
 
     var body: some View {

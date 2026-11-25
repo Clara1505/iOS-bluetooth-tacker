@@ -128,11 +128,81 @@ struct ReglesAlerteTests {
 
     @Test func leVueModeleUtiliseLaListeDeConfiance() async {
         let proche = appareil(rssi: -50, duree: 25)
+        let stockage = StockageFictif(idsHaches: [HacheurFictif().hacher(proche.identifiantSysteme)])
         let vueModele = BalayageVueModele(
             service: FauxServiceBalayage(resultat: .complet([proche])),
-            estDeConfiance: { $0.id == proche.id }
+            verificateur: VerificateurConfiance(stockage: stockage, hacheur: HacheurFictif())
         )
         await vueModele.lancerControle()
+        #expect(vueModele.evaluations.map(\.niveau) == [nil])
         #expect(vueModele.niveauGlobal == nil)
+    }
+
+    /// Échec en sécurité : une liste illisible ou falsifiée ne rend aucun appareil de confiance.
+    @Test func listeIllisibleLaisseLAppareilEnAlerte() async {
+        let proche = appareil(rssi: -50, duree: 25)
+        let stockage = StockageFictif(idsHaches: [HacheurFictif().hacher(proche.identifiantSysteme)])
+        stockage.erreurLire = ErreurListeDeConfiance.signatureInvalide
+        let vueModele = BalayageVueModele(
+            service: FauxServiceBalayage(resultat: .complet([proche])),
+            verificateur: VerificateurConfiance(stockage: stockage, hacheur: HacheurFictif())
+        )
+        await vueModele.lancerControle()
+        #expect(vueModele.niveauGlobal == .alerte)
+    }
+
+    /// La liste est relue à chaque contrôle : un appareil ajouté entre deux contrôles n'alerte plus.
+    @Test func laListeEstRelueAChaqueControle() async {
+        let proche = appareil(rssi: -50, duree: 25)
+        let stockage = StockageFictif(idsHaches: [])
+        let vueModele = BalayageVueModele(
+            service: FauxServiceBalayage(resultat: .complet([proche])),
+            verificateur: VerificateurConfiance(stockage: stockage, hacheur: HacheurFictif())
+        )
+        await vueModele.lancerControle()
+        #expect(vueModele.niveauGlobal == .alerte)
+
+        stockage.idsHaches = [HacheurFictif().hacher(proche.identifiantSysteme)]
+        await vueModele.lancerControle()
+        #expect(vueModele.niveauGlobal == nil)
+    }
+
+    /// Sans vérificateur (liste non disponible), tout appareil est inconnu.
+    @Test func sansVerificateurToutAppareilEstInconnu() async {
+        let vueModele = BalayageVueModele(
+            service: FauxServiceBalayage(resultat: .complet([appareil(rssi: -50, duree: 25)]))
+        )
+        await vueModele.lancerControle()
+        #expect(vueModele.niveauGlobal == .alerte)
+    }
+}
+
+// MARK: - Faux pour la liste de confiance (aucune crypto dans ces tests)
+
+/// Stockage en mémoire qui renvoie une liste construite à partir d'identifiants hachés fictifs.
+private final class StockageFictif: StockageListeDeConfiance {
+    var idsHaches: [Data]
+    var erreurLire: Error?
+
+    init(idsHaches: [Data]) {
+        self.idsHaches = idsHaches
+    }
+
+    func lire() throws -> ContenuListe {
+        if let erreurLire { throw erreurLire }
+        var contenu = ContenuListe()
+        contenu.appareils = idsHaches.map { AppareilDeConfiance(idHache: $0, nom: "Fictif", ajouteLe: Date(timeIntervalSince1970: 0)) }
+        return contenu
+    }
+
+    func modifier(entree: EntreeHistorique, _ transformation: (inout ContenuListe) -> Void) throws {}
+
+    func reinitialiser() throws {}
+}
+
+/// Hacheur fictif : l'identifiant en texte, sans crypto (le vrai hacheur relève de TRU-6).
+private struct HacheurFictif: HacheurIdentifiant {
+    func hacher(_ identifiant: UUID) -> Data {
+        Data(identifiant.uuidString.utf8)
     }
 }

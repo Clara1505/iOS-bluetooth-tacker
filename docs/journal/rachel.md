@@ -51,3 +51,15 @@ avant le commit correspondant.
 - **Date et heure** : 2026-11-25 02:25
 - **Auteur** : Rachel
 - **Prompt** : Ok, prenons ta recommandation, modifie `niveaux-alerte.md` en fonction. Mets à jour rachel.md et la description de la PR IOS-5 ; je garde la PR en brouillon. *(description de PR précédente jointe)*
+
+- **Date et heure** : 2026-11-25 17:35
+- **Auteur** : Rachel
+- **Prompt** : Regarde cette branche et vérifie que l'issue IOS-5 marche toujours bien (voir `docs/planning/BACKLOG.md`).
+
+- **Date et heure** : 2026-11-25 17:45
+- **Auteur** : Rachel
+- **Prompt** : Voici la description de la PR liée à cette issue, vérifie en fonction et mets-la à jour si besoin. Branche la liste de confiance. *(description de PR précédente jointe)*
+
+- **Date et heure** : 2026-11-25 17:54
+- **Auteur** : Rachel
+- **Prompt** : Mets à jour le journal des prompts `docs/journal/rachel.md`.

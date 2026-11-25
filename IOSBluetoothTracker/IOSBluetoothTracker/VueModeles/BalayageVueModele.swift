@@ -18,19 +18,17 @@ final class BalayageVueModele {
     /// `true` pendant un balayage, pour désactiver le bouton.
     private(set) var enCours = false
     private let service: any ServiceBalayage
-    private let estDeConfiance: (AppareilDetecte) -> Bool
+    /// Vérificateur de la liste de confiance, ou `nil` tant que la liste n'est pas disponible.
+    private let verificateur: VerificateurConfiance?
 
     /// - Parameters:
     ///   - service: service de balayage (vrai ou faux pour les tests).
-    ///   - estDeConfiance: indique si un appareil est dans la liste de confiance.
-    ///     Par défaut aucun appareil ne l'est : en attendant la liste (TRU-1, TRU-2),
-    ///     tout appareil est traité comme inconnu, ce qui est le choix prudent.
-    init(
-        service: any ServiceBalayage,
-        estDeConfiance: @escaping (AppareilDetecte) -> Bool = { _ in false }
-    ) {
+    ///   - verificateur: vérificateur de la liste de confiance (TRU-1, TRU-2).
+    ///     `nil` par défaut : aucun appareil n'est alors de confiance et tout appareil est
+    ///     traité comme inconnu, ce qui est le choix prudent (échec en sécurité).
+    init(service: any ServiceBalayage, verificateur: VerificateurConfiance? = nil) {
         self.service = service
-        self.estDeConfiance = estDeConfiance
+        self.verificateur = verificateur
     }
 
     /// Niveau le plus élevé du dernier contrôle, ou `nil` s'il n'y a aucun appareil inconnu.
@@ -47,7 +45,13 @@ final class BalayageVueModele {
         resultat = nouveauResultat
         switch nouveauResultat {
         case .complet(let appareils, _):
-            evaluations = ReglesAlerte.evaluer(appareils, estDeConfiance: estDeConfiance)
+            // La liste est relue à chaque contrôle, une seule fois, pour tenir compte des appareils
+            // ajoutés ou retirés depuis le contrôle précédent. Liste illisible : ensemble vide,
+            // donc tout appareil reste inconnu (VerificateurConfiance, échec en sécurité).
+            let idsDeConfiance = verificateur?.idsDeConfiance() ?? []
+            evaluations = ReglesAlerte.evaluer(appareils) { appareil in
+                self.verificateur?.estDeConfiance(appareil, parmi: idsDeConfiance) ?? false
+            }
         case .controleImpossible:
             evaluations = []
         }
