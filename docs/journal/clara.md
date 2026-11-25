@@ -177,6 +177,21 @@ depuis l'historique de la conversation.
 - **Auteur** : Clara
 - **Prompt** : Les scripts ont tourné, tout est créé. Si le jalon 1 est terminé, fais-moi le journal des prompts pour cette session (corrige les fautes d'orthographe) et sinon, dis-moi ce qu'il reste à faire.
 
+- **Date et heure** : 2026-11-25 10:36
+- **Auteur** : Clara
+- **Prompt** : Le journal des prompts a été mis à jour, la prochaine fois qu'il sera rempli, ce sera à partir de ce message. Fais un point sur ce qu'il reste à faire pour chaque jalon, aujourd'hui commence le jalon 4 (à 14h), il faut donc que je sache ce qui est en retard afin d'essayer de le rattraper. Fais le point sous forme de tableau et pour chaque personne du groupe.
+---
+- **Date et heure** : 2026-11-25 10:41
+- **Auteur** : Clara
+- **Prompt** : Concernant l'installation, il y a eu un problème de connexion aux MacBooks prêtés, donc nous sommes au courant et ça devrait être réglé aujourd'hui. Concernant le code existant et non fusionné, le problème est le même que pour l'iPhone, dès que le code aura été testé, il sera fusionné, c'est notre priorité. Si on enlève ces situations déjà identifiées, il reste quoi ?
+---
+- **Date et heure** : 2026-11-25 10:52
+- **Auteur** : Clara
+- **Prompt** : On va faire l'issue 54, elle ne dépend pas d'un Mac, fais-moi une proposition que je validerai après l'avoir relue, précise-moi où la placer dans le repo, et seulement quand j'aurai validé, tu me donneras une proposition de commit et de PR. Si je dois changer de branche, précise-le tout de suite.
+---
+- **Date et heure** : 2026-11-25 14:31
+- **Auteur** : Clara
+- **Prompt** : Okay je valide, avant de commit et push, il faudrait vérifier que le CLAUDE.md est bien cohérent en terme de rôle.
 - **Date et heure** : 2026-11-24 09:33
 - **Auteur** : Clara
 - **Prompt** : fait un point d'avancement sur le projet, les permissions git t'autorise a lire les issues, fait un point rapide sur l'avancement de tout le groupe, et fait un point un peu plus complet sur ce que je peux faire des maintenant de mon coté
