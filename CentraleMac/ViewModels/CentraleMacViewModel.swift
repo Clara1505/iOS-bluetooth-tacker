@@ -3,16 +3,18 @@ import Foundation
 import Observation
 #endif
 
-/// Vue-Modèle de la centrale Mac (architecture MVVM, `MAC-1`, `MAC-2`, `MAC-3` et préparation `MAC-7`).
+/// Vue-Modèle de la centrale Mac (architecture MVVM, `MAC-1`, `MAC-2`, `MAC-3`, `MAC-4` et `MAC-7`).
 ///
 /// Responsabilités :
 /// - Piloter le service de réception réseau à travers `ServiceReceptionAlertesProtocol` (`MAC-1`).
 /// - Piloter le service d'appairage par QR code et vérification d'empreinte à travers `ServiceAppairageCryptoProtocol` (`MAC-2`).
 /// - Piloter le canal chiffré (ECDH éphémère, HKDF-SHA256 à 1 clé par sens, AES-256-GCM) à travers `ServiceCanalChiffreCryptoProtocol` (`MAC-3`).
+/// - Piloter la vérification de signature ECDSA P-256 (Secure Enclave) et l'anti-rejeu (compteur, nonce, horodatage ±60 s)
+///   à travers `ServiceEvenementsSignesCryptoProtocol` (`MAC-4`).
 /// - Conserver l'historique des alertes reçues et toutes les clés **uniquement en mémoire vive (RAM)**,
 ///   sans aucune écriture dans un fichier ni dans `UserDefaults` (`ARCH-7`, menace `I4`).
 /// - Appliquer un plafond en mémoire sur le nombre d'alertes conservées pendant la séance (contre `D2`).
-/// - Fournir la purge immédiate en mémoire (historique + clés de session + clés d'appairage) pour la fin de séance (`MAC-7`, menace `I4`).
+/// - Fournir la purge immédiate en mémoire (historique + état anti-rejeu + clés de session + clés d'appairage) pour la fin de séance (`MAC-7`, menace `I4`).
 #if canImport(Observation)
 @Observable
 #endif
@@ -28,12 +30,16 @@ public final class CentraleMacViewModel {
     public private(set) var etatAppairage: EtatAppairageMac = .nonAppaire
     /// État courant du canal chiffré ECDH + HKDF + AES-256-GCM (`MAC-3`).
     public private(set) var etatCanalChiffre: EtatCanalChiffreMac = .ferme
+    /// Dernier compteur anti-rejeu accepté pour un événement signé (`MAC-4`).
+    public private(set) var dernierCompteurAntiRejeu: UInt64 = 0
     /// Historique des alertes reçues pendant la séance, triées de la plus récente à la plus ancienne (en RAM uniquement).
     public private(set) var alertesRecues: [Alerte] = []
     /// Compteur du nombre de trames invalides ou suspectes rejetées en sécurité pendant la séance.
     public private(set) var nombreTramesRejetees: Int = 0
     /// Dernière erreur de transport relevée (sans aucune donnée personnelle ni identifiant brut, menace `I2`).
     public private(set) var derniereErreurTransport: ErreurTransportCentrale?
+    /// Dernière erreur de vérification d'événement signé / anti-rejeu relevée (`MAC-4`).
+    public private(set) var derniereErreurEvenementSigne: ErreurEvenementSigneCrypto?
 
     /// Service réseau injecté via son protocole (permet l'injection d'un bouchon dans les tests unitaires).
     private let serviceReception: ServiceReceptionAlertesProtocol
@@ -41,24 +47,31 @@ public final class CentraleMacViewModel {
     private let serviceAppairage: ServiceAppairageCryptoProtocol
     /// Service cryptographique de canal chiffré injecté via son protocole (`MAC-3`).
     private let serviceCanalChiffre: ServiceCanalChiffreCryptoProtocol
+    /// Service cryptographique de vérification des événements signés et d'anti-rejeu (`MAC-4`).
+    private let serviceEvenementsSignes: ServiceEvenementsSignesCryptoProtocol
 
-    /// Initialise le Vue-Modèle avec les services de réception, d'appairage et de canal chiffré souhaités.
+    /// Initialise le Vue-Modèle avec les services de réception, d'appairage, de canal chiffré et de vérification d'événements signés.
     ///
     /// - Parameters:
     ///   - serviceReception: Implémentation réelle (`ServiceReceptionAlertes`) ou bouchon de test.
     ///   - serviceAppairage: Implémentation crypto (`ServiceAppairageCrypto`) ou bouchon de test.
-    ///   - serviceCanalChiffre: Implémentation crypto (`ServiceCanalChiffreCrypto`) ou `nil` (créé automatiquement à partir de `serviceAppairage`).
+    ///   - serviceCanalChiffre: Implémentation crypto (`ServiceCanalChiffreCrypto`) ou `nil`.
+    ///   - serviceEvenementsSignes: Implémentation crypto (`ServiceEvenementsSignesCrypto`) ou `nil`.
     public init(
         serviceReception: ServiceReceptionAlertesProtocol,
         serviceAppairage: ServiceAppairageCryptoProtocol = ServiceAppairageCrypto(),
-        serviceCanalChiffre: ServiceCanalChiffreCryptoProtocol? = nil
+        serviceCanalChiffre: ServiceCanalChiffreCryptoProtocol? = nil,
+        serviceEvenementsSignes: ServiceEvenementsSignesCryptoProtocol? = nil
     ) {
         self.serviceReception = serviceReception
         self.serviceAppairage = serviceAppairage
         let canal = serviceCanalChiffre ?? ServiceCanalChiffreCrypto(serviceAppairage: serviceAppairage)
         self.serviceCanalChiffre = canal
+        let verificateurEvenements = serviceEvenementsSignes ?? ServiceEvenementsSignesCrypto(serviceAppairage: serviceAppairage)
+        self.serviceEvenementsSignes = verificateurEvenements
         self.etatAppairage = serviceAppairage.etat
         self.etatCanalChiffre = canal.etat
+        self.dernierCompteurAntiRejeu = verificateurEvenements.dernierCompteurAccepte
         configurerRappelsService()
     }
 
@@ -75,8 +88,10 @@ public final class CentraleMacViewModel {
     // MARK: - Actions d'appairage par QR code (MAC-2)
 
     /// Génère une nouvelle clé d'identité P-256 en RAM et affiche le QR code d'appairage (`MAC-2`).
-    /// Toute régénération de QR code ferme également le canal chiffré antérieur en sécurité.
+    /// Toute régénération de QR code ferme également le canal chiffré et réinitialise le compteur anti-rejeu.
     public func genererQRCodeAppairage() {
+        serviceEvenementsSignes.reinitialiserEtatAntiRejeu()
+        dernierCompteurAntiRejeu = serviceEvenementsSignes.dernierCompteurAccepte
         serviceCanalChiffre.purgerCanalEnMemoire()
         etatCanalChiffre = serviceCanalChiffre.etat
 
@@ -121,20 +136,26 @@ public final class CentraleMacViewModel {
 
     /// Refuse l'appairage si le code court affiché sur le Mac diffère de celui de l'iPhone (`S4`, `E2`).
     public func refuserAppairage() {
+        serviceEvenementsSignes.reinitialiserEtatAntiRejeu()
+        dernierCompteurAntiRejeu = serviceEvenementsSignes.dernierCompteurAccepte
         serviceCanalChiffre.purgerCanalEnMemoire()
         etatCanalChiffre = serviceCanalChiffre.etat
         serviceAppairage.refuserEmpreinteParUtilisateur()
         etatAppairage = serviceAppairage.etat
     }
 
-    // MARK: - Actions du canal chiffré ECDH + HKDF + AES-256-GCM (MAC-3)
+    // MARK: - Actions du canal chiffré ECDH + HKDF + AES-256-GCM (MAC-3) et Événements signés (MAC-4)
 
-    /// Établit le canal chiffré à partir du message d'échange ECDH signé de l'iPhone (`MAC-3`, contre `S1`, `I1`, `E2`).
+    /// Établit le canal chiffré à partir du message d'échange ECDH signé de l'iPhone (`MAC-3`, contre `S1`, `I1`, `E2`),
+    /// et remet à zéro le compteur anti-rejeu pour cette nouvelle session (`MAC-4`, `T2`).
     ///
     /// - Parameter messageECDH: La clé publique ECDH éphémère de l'iPhone et sa signature ECDSA P-256.
     /// - Returns: La réponse ECDH signée du Mac, ou `nil` si l'échange est refusé en sécurité.
     @discardableResult
     public func ouvrirCanalChiffre(_ messageECDH: MessageEchangeECDHIPhone) -> ReponseEchangeECDHMac? {
+        serviceEvenementsSignes.reinitialiserEtatAntiRejeu()
+        dernierCompteurAntiRejeu = serviceEvenementsSignes.dernierCompteurAccepte
+
         do {
             let reponse = try serviceCanalChiffre.etablirCanalDepuisMessageIPhone(messageECDH)
             etatCanalChiffre = serviceCanalChiffre.etat
@@ -143,6 +164,38 @@ public final class CentraleMacViewModel {
             etatCanalChiffre = serviceCanalChiffre.etat
             nombreTramesRejetees += 1
             return nil
+        }
+    }
+
+    /// Déchiffre un événement chiffré en `AES-256-GCM` (`MAC-3`) **et** vérifie sa signature `P-256 ECDSA`
+    /// ainsi que son compteur croissant, son nonce et son horodatage à ±60 s (`MAC-4`, contre `S2`, `R1`, `T1`, `T2`).
+    ///
+    /// - Parameters:
+    ///   - blocAESGCM: Le bloc AES-GCM combiné contenant l'`EvenementAlerteSigne`.
+    ///   - dateReferenceMac: L'heure courante du Mac (`Date()` par défaut).
+    /// - Returns: `true` si l'événement est authentifié, frais et ajouté à l'historique ; `false` s'il est rejeté.
+    @discardableResult
+    public func recevoirEvenementSigneEtChiffre(
+        _ blocAESGCM: Data,
+        dateReferenceMac: Date = Date()
+    ) -> Bool {
+        do {
+            let alerte = try serviceEvenementsSignes.dechiffrerEtVerifierEvenement(
+                blocChiffreAESGCM: blocAESGCM,
+                via: serviceCanalChiffre,
+                dateReferenceMac: dateReferenceMac
+            )
+            dernierCompteurAntiRejeu = serviceEvenementsSignes.dernierCompteurAccepte
+            derniereErreurEvenementSigne = nil
+            enregistrerAlerteEnMemoire(alerte)
+            return true
+        } catch let erreurSigne as ErreurEvenementSigneCrypto {
+            nombreTramesRejetees += 1
+            derniereErreurEvenementSigne = erreurSigne
+            return false
+        } catch {
+            nombreTramesRejetees += 1
+            return false
         }
     }
 
@@ -168,16 +221,19 @@ public final class CentraleMacViewModel {
         }
     }
 
-    // MARK: - Purge de fin de séance (MAC-1 / MAC-2 / MAC-3 / MAC-7)
+    // MARK: - Purge de fin de séance (MAC-1 / MAC-2 / MAC-3 / MAC-4 / MAC-7)
 
-    /// Purge intégralement l'historique des alertes, les clés de session du canal chiffré,
-    /// les clés d'appairage et les compteurs en mémoire vive (`MAC-7`).
+    /// Purge intégralement l'historique des alertes, l'état anti-rejeu (compteur et nonces),
+    /// les clés de session du canal chiffré, les clés d'appairage et les compteurs en mémoire vive (`MAC-7`).
     ///
     /// Menace STRIDE visée : `I4` (aucune donnée ni clé laissée à l'utilisateur suivant du Mac prêté).
     public func purgerHistoriqueSession() {
         alertesRecues.removeAll()
         nombreTramesRejetees = 0
         derniereErreurTransport = nil
+        derniereErreurEvenementSigne = nil
+        serviceEvenementsSignes.reinitialiserEtatAntiRejeu()
+        dernierCompteurAntiRejeu = serviceEvenementsSignes.dernierCompteurAccepte
         serviceCanalChiffre.purgerCanalEnMemoire()
         etatCanalChiffre = serviceCanalChiffre.etat
         serviceAppairage.purgerClesEnMemoire()
