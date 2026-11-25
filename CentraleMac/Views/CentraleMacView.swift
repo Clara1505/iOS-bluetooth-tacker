@@ -49,7 +49,7 @@ public struct CentraleMacView: View {
                 .frame(width: 12, height: 12)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Centrale Anti-Traceur (Mac prêté – Session en RAM uniquement)")
+                Text("Centrale Anti-Traceur (Mac prêté – Historique chiffré AES-256-GCM en RAM)")
                     .font(.headline)
                 Text(texteEtatServeur)
                     .font(.subheadline)
