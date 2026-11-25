@@ -39,3 +39,15 @@ avant le commit correspondant.
 - **Date et heure** : 2026-11-25 01:46
 - **Auteur** : Rachel
 - **Prompt** : Donne-moi la description de la PR IOS-3 et mets à jour rachel.md.
+
+- **Date et heure** : 2026-11-25 01:55
+- **Auteur** : Rachel
+- **Prompt** : Je suis sur la branche IOS-5, tu peux commencer l'implémentation de cette issue.
+
+- **Date et heure** : 2026-11-25 02:05
+- **Auteur** : Rachel
+- **Prompt** : Pourquoi tu n'as pas gardé la règle du niveau « Alerte » qui est pour les appareils inconnus vus dans au moins 2 balayages (voir `niveaux-alerte.md`) ? Pourquoi l'avoir changé pour « proche et resté là » ? Pourquoi ne pas faire IOS-5 P2 dès maintenant ? Dans la description de la PR IOS-5, fais en sorte que la fusion ne soit pas possible tant que TRU-2 (issue 38) n'est pas fusionnée, soit en bloquant, soit en l'écrivant explicitement dans la description.
+
+- **Date et heure** : 2026-11-25 02:25
+- **Auteur** : Rachel
+- **Prompt** : Ok, prenons ta recommandation, modifie `niveaux-alerte.md` en fonction. Mets à jour rachel.md et la description de la PR IOS-5 ; je garde la PR en brouillon. *(description de PR précédente jointe)*
