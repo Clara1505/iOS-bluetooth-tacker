@@ -176,3 +176,50 @@ depuis l'historique de la conversation.
 - **Date et heure** : 2026-11-23 16:01
 - **Auteur** : Clara
 - **Prompt** : Les scripts ont tourné, tout est créé. Si le jalon 1 est terminé, fais-moi le journal des prompts pour cette session (corrige les fautes d'orthographe) et sinon, dis-moi ce qu'il reste à faire.
+
+- **Date et heure** : 2026-11-25 10:36
+- **Auteur** : Clara
+- **Prompt** : Le journal des prompts a été mis à jour, la prochaine fois qu'il sera rempli, ce sera à partir de ce message. Fais un point sur ce qu'il reste à faire pour chaque jalon, aujourd'hui commence le jalon 4 (à 14h), il faut donc que je sache ce qui est en retard afin d'essayer de le rattraper. Fais le point sous forme de tableau et pour chaque personne du groupe.
+---
+- **Date et heure** : 2026-11-25 10:41
+- **Auteur** : Clara
+- **Prompt** : Concernant l'installation, il y a eu un problème de connexion aux MacBooks prêtés, donc nous sommes au courant et ça devrait être réglé aujourd'hui. Concernant le code existant et non fusionné, le problème est le même que pour l'iPhone, dès que le code aura été testé, il sera fusionné, c'est notre priorité. Si on enlève ces situations déjà identifiées, il reste quoi ?
+---
+- **Date et heure** : 2026-11-25 10:52
+- **Auteur** : Clara
+- **Prompt** : On va faire l'issue 54, elle ne dépend pas d'un Mac, fais-moi une proposition que je validerai après l'avoir relue, précise-moi où la placer dans le repo, et seulement quand j'aurai validé, tu me donneras une proposition de commit et de PR. Si je dois changer de branche, précise-le tout de suite.
+---
+- **Date et heure** : 2026-11-25 14:31
+- **Auteur** : Clara
+- **Prompt** : Okay je valide, avant de commit et push, il faudrait vérifier que le CLAUDE.md est bien cohérent en terme de rôle.
+- **Date et heure** : 2026-11-24 09:33
+- **Auteur** : Clara
+- **Prompt** : fait un point d'avancement sur le projet, les permissions git t'autorise a lire les issues, fait un point rapide sur l'avancement de tout le groupe, et fait un point un peu plus complet sur ce que je peux faire des maintenant de mon coté
+---
+- **Date et heure** : 2026-11-24 09:41
+- **Auteur** : Clara
+- **Prompt** : tu y as accès, tu dois juste lier le repo a la session !
+---
+- **Date et heure** : 2026-11-24 09:49
+- **Auteur** : Clara
+- **Prompt** : [texte exact collé : réponse d'une autre discussion sur l'accès GitHub]
+---
+- **Date et heure** : 2026-11-24 09:51
+- **Auteur** : Clara
+- **Prompt** : oui je l'autorise !!!!
+---
+- **Date et heure** : 2026-11-24 10:26
+- **Auteur** : Clara
+- **Prompt** : avant de lire les issues du J3, est ce qu'il me reste des issues pour le J2 ?
+---
+- **Date et heure** : 2026-11-24 10:54
+- **Auteur** : Clara
+- **Prompt** : ARCH-1 est en cours, donc on le fera RT-1 plus tard / on fait un point sur ce qu'il y a a faire sur le rôle de red team
+---
+- **Date et heure** : 2026-11-24 12:19
+- **Auteur** : Clara
+- **Prompt** : est ce que j'ai forcement besoin d'un Mac pour faire tout ca ? et SEC-1 est fini donc on peut faire RT-1
+---
+- **Date et heure** : 2026-11-25 10:21
+- **Auteur** : Clara
+- **Prompt** : le document me semble bien, quel est la prochaine étape ? il faut que je le transmette a Onur et Aida ? et après ? Soit précis et si il y a besoin de créer des branches, des commit ou des PR n'hésite pas a me faire des propositions
