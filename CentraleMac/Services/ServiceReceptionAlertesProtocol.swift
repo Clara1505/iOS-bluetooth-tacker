@@ -32,6 +32,10 @@ public enum ErreurTransportCentrale: Error, Equatable, Sendable {
     case decodageEchoue
     /// L'alerte décodée ne respecte pas les contraintes métier (`ErreurValidationAlerte`).
     case alerteInvalide(ErreurValidationAlerte)
+    /// La connexion cliente est restée silencieuse au-delà du délai maximal autorisé (`MAC-6`, `C2`, menace `D2`).
+    case delaiInactiviteDepasse
+    /// Le message a été rejeté par le filtre rapide ou le limiteur de débit (`MAC-6`, menaces `D2`, `E2`).
+    case rejeteParLimiteurDebit(DecisionFiltrageRapide)
 }
 
 /// Encodeur et décodeur sans état du cadrage TCP à préfixe de taille sur 4 octets (`UInt32` Big-Endian).

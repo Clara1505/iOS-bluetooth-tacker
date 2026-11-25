@@ -11,7 +11,7 @@ public enum MotifPurgeCentrale: String, Equatable, Sendable {
     case fermetureApplication
 }
 
-/// Vue-Modèle de la centrale Mac (architecture MVVM, `MAC-1`, `MAC-2`, `MAC-3`, `MAC-4`, `MAC-5` et `MAC-7`).
+/// Vue-Modèle de la centrale Mac (architecture MVVM, `MAC-1` à `MAC-7`).
 ///
 /// Responsabilités :
 /// - Piloter le service de réception réseau à travers `ServiceReceptionAlertesProtocol` (`MAC-1`).
@@ -21,8 +21,10 @@ public enum MotifPurgeCentrale: String, Equatable, Sendable {
 ///   à travers `ServiceEvenementsSignesCryptoProtocol` (`MAC-4`).
 /// - Stocker l'historique des alertes **chiffré en `AES-256-GCM` en mémoire vive** à travers `ServiceHistoriqueChiffreCryptoProtocol` (`MAC-5`),
 ///   sans aucune écriture dans un fichier ni dans `UserDefaults` (`ARCH-7`, menace `I4`).
+/// - Rejeter rapidement en `O(1)` tout message non authentifié ou en excès de débit avant d'invoquer CryptoKit
+///   à travers `ServiceLimitationDebitProtocol` (`MAC-6`, menaces `D2`, `E2`).
 /// - Fournir la purge immédiate en mémoire (historique chiffré + destruction de clé *crypto-shredding* + état anti-rejeu +
-///   clés de session + clés d'appairage + arrêt réseau) sur action de l'utilisateur **et** à la fermeture de l'app (`MAC-7`, `I4`, `C3`).
+///   clés de session + clés d'appairage + limiteur de débit + arrêt réseau) sur action de l'utilisateur **et** à la fermeture de l'app (`MAC-7`, `I4`, `C3`).
 #if canImport(Observation)
 @Observable
 #endif
@@ -44,6 +46,8 @@ public final class CentraleMacViewModel {
     public private(set) var nombreEntreesHistoriqueChiffre: Int = 0
     /// Compteur du nombre de trames invalides ou suspectes rejetées en sécurité pendant la séance.
     public private(set) var nombreTramesRejetees: Int = 0
+    /// Dernière décision de rejet rapide ou de limitation de débit (`MAC-6`).
+    public private(set) var derniereDecisionFiltrageRapide: DecisionFiltrageRapide?
     /// Dernière erreur de transport relevée (sans aucune donnée personnelle ni identifiant brut, menace `I2`).
     public private(set) var derniereErreurTransport: ErreurTransportCentrale?
     /// Dernière erreur de vérification d'événement signé / anti-rejeu relevée (`MAC-4`).
@@ -84,15 +88,18 @@ public final class CentraleMacViewModel {
     private let serviceEvenementsSignes: ServiceEvenementsSignesCryptoProtocol
     /// Service cryptographique du coffre d'historique chiffré en RAM (`MAC-5`).
     private let serviceHistoriqueChiffre: ServiceHistoriqueChiffreCryptoProtocol
+    /// Service de rejet rapide des messages non authentifiés et de limitation de débit (`MAC-6`).
+    private let serviceLimitationDebit: ServiceLimitationDebitProtocol
 
     /// Initialise le Vue-Modèle avec les services de réception, d'appairage, de canal chiffré,
-    /// de vérification d'événements signés et de coffre d'historique chiffré.
+    /// de vérification d'événements signés, de coffre d'historique chiffré et de limitation de débit.
     public init(
         serviceReception: ServiceReceptionAlertesProtocol,
         serviceAppairage: ServiceAppairageCryptoProtocol = ServiceAppairageCrypto(),
         serviceCanalChiffre: ServiceCanalChiffreCryptoProtocol? = nil,
         serviceEvenementsSignes: ServiceEvenementsSignesCryptoProtocol? = nil,
-        serviceHistoriqueChiffre: ServiceHistoriqueChiffreCryptoProtocol = ServiceHistoriqueChiffreCrypto()
+        serviceHistoriqueChiffre: ServiceHistoriqueChiffreCryptoProtocol = ServiceHistoriqueChiffreCrypto(),
+        serviceLimitationDebit: ServiceLimitationDebitProtocol = ServiceLimitationDebit()
     ) {
         self.serviceReception = serviceReception
         self.serviceAppairage = serviceAppairage
@@ -101,6 +108,7 @@ public final class CentraleMacViewModel {
         let verificateurEvenements = serviceEvenementsSignes ?? ServiceEvenementsSignesCrypto(serviceAppairage: serviceAppairage)
         self.serviceEvenementsSignes = verificateurEvenements
         self.serviceHistoriqueChiffre = serviceHistoriqueChiffre
+        self.serviceLimitationDebit = serviceLimitationDebit
         self.etatAppairage = serviceAppairage.etat
         self.etatCanalChiffre = canal.etat
         self.dernierCompteurAntiRejeu = verificateurEvenements.dernierCompteurAccepte
@@ -110,6 +118,7 @@ public final class CentraleMacViewModel {
 
     deinit {
         // Filet de sécurité supplémentaire (C3, I4) : purge des structures et destruction des clés à la désallocation.
+        serviceLimitationDebit.reinitialiserLimiteur()
         serviceHistoriqueChiffre.purgerHistoriqueEtCle(regenererNouvelleCle: false)
         serviceEvenementsSignes.reinitialiserEtatAntiRejeu()
         serviceCanalChiffre.purgerCanalEnMemoire()
@@ -130,8 +139,10 @@ public final class CentraleMacViewModel {
     // MARK: - Actions d'appairage par QR code (MAC-2)
 
     /// Génère une nouvelle clé d'identité P-256 en RAM et affiche le QR code d'appairage (`MAC-2`).
-    /// Toute régénération de QR code ferme également le canal chiffré et réinitialise le compteur anti-rejeu.
+    /// Toute régénération de QR code ferme également le canal chiffré et réinitialise le compteur anti-rejeu et le limiteur.
     public func genererQRCodeAppairage() {
+        serviceLimitationDebit.reinitialiserLimiteur()
+        derniereDecisionFiltrageRapide = nil
         serviceEvenementsSignes.reinitialiserEtatAntiRejeu()
         dernierCompteurAntiRejeu = serviceEvenementsSignes.dernierCompteurAccepte
         serviceCanalChiffre.purgerCanalEnMemoire()
@@ -178,6 +189,8 @@ public final class CentraleMacViewModel {
 
     /// Refuse l'appairage si le code court affiché sur le Mac diffère de celui de l'iPhone (`S4`, `E2`).
     public func refuserAppairage() {
+        serviceLimitationDebit.reinitialiserLimiteur()
+        derniereDecisionFiltrageRapide = nil
         serviceEvenementsSignes.reinitialiserEtatAntiRejeu()
         dernierCompteurAntiRejeu = serviceEvenementsSignes.dernierCompteurAccepte
         serviceCanalChiffre.purgerCanalEnMemoire()
@@ -186,15 +199,17 @@ public final class CentraleMacViewModel {
         etatAppairage = serviceAppairage.etat
     }
 
-    // MARK: - Actions du canal chiffré ECDH + HKDF + AES-256-GCM (MAC-3) et Événements signés (MAC-4)
+    // MARK: - Actions du canal chiffré (MAC-3), Événements signés (MAC-4) et Rejet rapide / Limitation de débit (MAC-6)
 
     /// Établit le canal chiffré à partir du message d'échange ECDH signé de l'iPhone (`MAC-3`, contre `S1`, `I1`, `E2`),
-    /// et remet à zéro le compteur anti-rejeu pour cette nouvelle session (`MAC-4`, `T2`).
+    /// et remet à zéro le compteur anti-rejeu et le limiteur de débit pour cette nouvelle session (`MAC-4`, `MAC-6`).
     ///
     /// - Parameter messageECDH: La clé publique ECDH éphémère de l'iPhone et sa signature ECDSA P-256.
     /// - Returns: La réponse ECDH signée du Mac, ou `nil` si l'échange est refusé en sécurité.
     @discardableResult
     public func ouvrirCanalChiffre(_ messageECDH: MessageEchangeECDHIPhone) -> ReponseEchangeECDHMac? {
+        serviceLimitationDebit.reinitialiserLimiteur()
+        derniereDecisionFiltrageRapide = nil
         serviceEvenementsSignes.reinitialiserEtatAntiRejeu()
         dernierCompteurAntiRejeu = serviceEvenementsSignes.dernierCompteurAccepte
 
@@ -209,56 +224,108 @@ public final class CentraleMacViewModel {
         }
     }
 
-    /// Déchiffre un événement chiffré en `AES-256-GCM` (`MAC-3`), vérifie sa signature `P-256 ECDSA`
-    /// ainsi que son compteur croissant, son nonce et son horodatage à ±60 s (`MAC-4`),
-    /// puis le rechiffre dans le coffre d'historique en RAM (`MAC-5`).
+    /// Filtre rapidement en `O(1)` le message entrant (`MAC-6` : état d'appairage, état du canal, taille, débit, seuil d'échecs),
+    /// puis déchiffre le bloc `AES-256-GCM` (`MAC-3`), vérifie sa signature `P-256 ECDSA` et ses 3 règles anti-rejeu (`MAC-4`),
+    /// et enfin le rechiffre dans le coffre d'historique en RAM (`MAC-5`).
     ///
     /// - Parameters:
     ///   - blocAESGCM: Le bloc AES-GCM combiné contenant l'`EvenementAlerteSigne`.
     ///   - dateReferenceMac: L'heure courante du Mac (`Date()` par défaut).
-    /// - Returns: `true` si l'événement est authentifié, frais et ajouté à l'historique chiffré ; `false` s'il est rejeté.
+    /// - Returns: `true` si l'événement est autorisé, authentifié, frais et ajouté à l'historique ; `false` s'il est rejeté.
     @discardableResult
     public func recevoirEvenementSigneEtChiffre(
         _ blocAESGCM: Data,
         dateReferenceMac: Date = Date()
     ) -> Bool {
+        // 1. Rejet rapide pré-cryptographique et contrôle de débit en O(1) (MAC-6 : contre D2, E2, D3).
+        let decision = serviceLimitationDebit.evaluerMessageEntrant(
+            tailleOctets: blocAESGCM.count,
+            estPairAppaire: serviceAppairage.estAppaire,
+            estCanalOuvert: serviceCanalChiffre.estOuvert,
+            dateReception: dateReferenceMac
+        )
+        guard decision == .autorise else {
+            derniereDecisionFiltrageRapide = decision
+            derniereErreurTransport = .rejeteParLimiteurDebit(decision)
+            nombreTramesRejetees += 1
+            return false
+        }
+
+        // 2. Déchiffrement AES-256-GCM (MAC-3) + vérification de signature ECDSA P-256 et anti-rejeu (MAC-4).
         do {
             let alerte = try serviceEvenementsSignes.dechiffrerEtVerifierEvenement(
                 blocChiffreAESGCM: blocAESGCM,
                 via: serviceCanalChiffre,
                 dateReferenceMac: dateReferenceMac
             )
+            serviceLimitationDebit.signalerSuccesAuthentification()
+            derniereDecisionFiltrageRapide = .autorise
             dernierCompteurAntiRejeu = serviceEvenementsSignes.dernierCompteurAccepte
             derniereErreurEvenementSigne = nil
             enregistrerAlerteEnMemoire(alerte)
             return true
         } catch let erreurSigne as ErreurEvenementSigneCrypto {
+            serviceLimitationDebit.signalerEchecAuthentification()
             nombreTramesRejetees += 1
             derniereErreurEvenementSigne = erreurSigne
+            // Si le seuil d'échecs d'authentification consécutifs est atteint, on verrouille immédiatement le canal (MAC-6).
+            if serviceLimitationDebit.echecsAuthentificationConsecutifs >=
+                serviceLimitationDebit.seuilEchecsAuthentificationConsecutifs {
+                serviceCanalChiffre.purgerCanalEnMemoire()
+                etatCanalChiffre = .verrouille(raison: "Canal coupé après trop de messages non authentifiés consécutifs (MAC-6).")
+            }
             return false
         } catch {
+            serviceLimitationDebit.signalerEchecAuthentification()
             nombreTramesRejetees += 1
+            if serviceLimitationDebit.echecsAuthentificationConsecutifs >=
+                serviceLimitationDebit.seuilEchecsAuthentificationConsecutifs {
+                serviceCanalChiffre.purgerCanalEnMemoire()
+                etatCanalChiffre = .verrouille(raison: "Canal coupé après trop de messages non authentifiés consécutifs (MAC-6).")
+            }
             return false
         }
     }
 
-    /// Déchiffre un événement d'alerte chiffré en `AES-256-GCM` reçu sur le canal sécurisé (`MAC-3`, contre `I1`, `T1`),
+    /// Filtre rapidement en `O(1)` le message entrant (`MAC-6`), déchiffre l'alerte chiffrée en `AES-256-GCM` (`MAC-3`),
     /// valide son format (`ARCH-3`) et l'ajoute au coffre d'historique chiffré en mémoire vive (`MAC-5`).
     ///
-    /// - Parameter blocAESGCM: Le bloc combiné AES-GCM (`nonce 12 o || chiffré || tag 16 o`).
+    /// - Parameters:
+    ///   - blocAESGCM: Le bloc combiné AES-GCM (`nonce 12 o || chiffré || tag 16 o`).
+    ///   - dateReception: L'heure de réception (`Date()` par défaut).
     /// - Returns: `true` si l'alerte a été authentifiée, déchiffrée et enregistrée ; `false` en cas de rejet.
     @discardableResult
-    public func recevoirAlerteChiffree(_ blocAESGCM: Data) -> Bool {
+    public func recevoirAlerteChiffree(
+        _ blocAESGCM: Data,
+        dateReception: Date = Date()
+    ) -> Bool {
+        let decision = serviceLimitationDebit.evaluerMessageEntrant(
+            tailleOctets: blocAESGCM.count,
+            estPairAppaire: serviceAppairage.estAppaire,
+            estCanalOuvert: serviceCanalChiffre.estOuvert,
+            dateReception: dateReception
+        )
+        guard decision == .autorise else {
+            derniereDecisionFiltrageRapide = decision
+            derniereErreurTransport = .rejeteParLimiteurDebit(decision)
+            nombreTramesRejetees += 1
+            return false
+        }
+
         do {
             let donneesClaires = try serviceCanalChiffre.dechiffrerMessageDepuisIPhone(blocAESGCM)
             let alerte = try CadrageTrameTCP.decoderAlerte(depuis: donneesClaires)
+            serviceLimitationDebit.signalerSuccesAuthentification()
+            derniereDecisionFiltrageRapide = .autorise
             enregistrerAlerteEnMemoire(alerte)
             return true
         } catch let erreurTransport as ErreurTransportCentrale {
+            serviceLimitationDebit.signalerEchecAuthentification()
             nombreTramesRejetees += 1
             derniereErreurTransport = erreurTransport
             return false
         } catch {
+            serviceLimitationDebit.signalerEchecAuthentification()
             nombreTramesRejetees += 1
             return false
         }
@@ -278,12 +345,13 @@ public final class CentraleMacViewModel {
         !serviceAppairage.estAppaire &&
         serviceAppairage.clePubliqueIPhoneAppaire == nil &&
         serviceAppairage.clePubliqueIdentiteMac == nil &&
-        etatAppairage == .nonAppaire
+        etatAppairage == .nonAppaire &&
+        serviceLimitationDebit.echecsAuthentificationConsecutifs == 0
     }
 
     /// Purge intégralement l'historique chiffré (en détruisant sa clé AES-256 par *crypto-shredding*),
-    /// l'état anti-rejeu (compteur et nonces), les clés de session du canal chiffré, les clés d'appairage
-    /// et les compteurs en mémoire vive (`MAC-5` + `MAC-7`).
+    /// l'état anti-rejeu (compteur et nonces), le limiteur de débit, les clés de session du canal chiffré,
+    /// les clés d'appairage et les compteurs en mémoire vive (`MAC-5` + `MAC-6` + `MAC-7`).
     ///
     /// Menace STRIDE visée : `I4` (aucune donnée ni clé laissée à l'utilisateur suivant du Mac prêté).
     ///
@@ -299,35 +367,39 @@ public final class CentraleMacViewModel {
         serviceHistoriqueChiffre.purgerHistoriqueEtCle(regenererNouvelleCle: regenererCleCoffre)
         nombreEntreesHistoriqueChiffre = serviceHistoriqueChiffre.nombreEntreesChiffrees
         nombreTramesRejetees = 0
+        derniereDecisionFiltrageRapide = nil
         derniereErreurTransport = nil
         derniereErreurEvenementSigne = nil
         derniereErreurHistoriqueChiffre = nil
 
-        // 2. Réinitialisation du compteur anti-rejeu et de la table des nonces en RAM (MAC-4).
+        // 2. Réinitialisation du limiteur de débit et du compteur d'échecs d'authentification (MAC-6).
+        serviceLimitationDebit.reinitialiserLimiteur()
+
+        // 3. Réinitialisation du compteur anti-rejeu et de la table des nonces en RAM (MAC-4).
         serviceEvenementsSignes.reinitialiserEtatAntiRejeu()
         dernierCompteurAntiRejeu = serviceEvenementsSignes.dernierCompteurAccepte
 
-        // 3. Destruction des clés symétriques directionnelles AES-256 en RAM (MAC-3).
+        // 4. Destruction des clés symétriques directionnelles AES-256 en RAM (MAC-3).
         serviceCanalChiffre.purgerCanalEnMemoire()
         etatCanalChiffre = serviceCanalChiffre.etat
 
-        // 4. Destruction de la clé privée d'identité du Mac, de la clé publique de l'iPhone et du QR code en RAM (MAC-2).
+        // 5. Destruction de la clé privée d'identité du Mac, de la clé publique de l'iPhone et du QR code en RAM (MAC-2).
         serviceAppairage.purgerClesEnMemoire()
         etatAppairage = serviceAppairage.etat
 
-        // 5. Nettoyage défensif des caches volatiles du processus sur le Mac prêté (I4).
+        // 6. Nettoyage défensif des caches volatiles du processus sur le Mac prêté (I4).
         URLCache.shared.removeAllCachedResponses()
         if let identifiantBundle = Bundle.main.bundleIdentifier {
             UserDefaults.standard.removePersistentDomain(forName: identifiantBundle)
         }
 
-        // 6. Arrêt optionnel de l'écouteur TCP (systématique lors de la fermeture de l'app).
+        // 7. Arrêt optionnel de l'écouteur TCP (systématique lors de la fermeture de l'app).
         if arreterReseau {
             serviceReception.arreterEcoute()
             etatServeur = .arrete
         }
 
-        // 7. Traçabilité de la purge en mémoire pour confirmation visuelle dans l'interface.
+        // 8. Traçabilité de la purge en mémoire pour confirmation visuelle dans l'interface.
         nombrePurgesEffectuees += 1
         dateDernierePurge = Date()
         dernierMotifPurge = motif
