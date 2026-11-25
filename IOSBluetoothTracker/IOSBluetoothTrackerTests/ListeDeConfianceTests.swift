@@ -1,8 +1,9 @@
+// xcode: set sdk=iOS
+
 import Foundation
 import Testing
 // Adapter le nom du module au nom de la cible Xcode une fois créée (IOS-1).
-@testable import TrackerBluetooth
-
+@testable import IOSBluetoothTracker
 /// Tests de la logique pure de la liste de confiance (sans Keychain ni Secure Enclave).
 /// Les tests de signature et d'authentification se font sur iPhone, voir le plan de tests à part.
 struct ListeDeConfianceTests {
