@@ -2,23 +2,19 @@
 //  ServiceBalayage.swift
 //  IOSBluetoothTracker
 //
-//  Created by Guest User on 24/11/2026.
-//
 
 import Foundation
 
-/// Raisons pour lesquelles un contrôle ne peut pas aboutir (menace D4).
-enum ErreurBalayage: Error, Equatable, Sendable {
-    case bluetoothDesactive
-    case permissionRefusee
-    case bluetoothIndisponible
-    case interrompu
-}
-
-/// Lance un balayage Bluetooth. Implémenté par le vrai service (IOS-2) et par un faux dans les tests.
-protocol ServiceBalayage: Sendable {
-    /// Balaye pendant `duree` et renvoie les appareils vus.
-    /// - Throws: `ErreurBalayage` si le contrôle est impossible.
-    ///   Un échec n'est jamais renvoyé sous forme de liste vide (D4).
-    func balayer(duree: Duration) async throws -> [AppareilDetecte]
+/// Service qui lance un balayage Bluetooth.
+///
+/// Implémenté par le vrai service (`ServiceBalayageBluetooth`) et par un faux
+/// (`FauxServiceBalayage`) pour les tests et les aperçus SwiftUI.
+/// Isolé sur le thread principal, comme le vue-modèle et CoreBluetooth (file `nil` = principale).
+@MainActor
+protocol ServiceBalayage {
+    /// Lance un balayage d'environ `duree` secondes.
+    /// - Parameter duree: durée du balayage, en secondes (30 s par défaut, voir `ReglesBalayage`).
+    /// - Returns: `.complet` avec les appareils vus, ou `.controleImpossible` si le Bluetooth
+    ///   est indisponible ou coupé pendant le balayage. Jamais une liste vide dans ce cas (D4).
+    func lancerBalayage(duree: TimeInterval) async -> ResultatBalayage
 }
