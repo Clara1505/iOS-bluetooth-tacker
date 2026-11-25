@@ -1,14 +1,15 @@
 #if canImport(SwiftUI)
 import SwiftUI
 
-/// Vue principale de la centrale Mac (`MAC-1`).
+/// Vue principale de la centrale Mac (`MAC-1` et `MAC-2`).
 ///
 /// Affiche :
 /// - L'état de l'écouteur TCP local (`Network.framework` / Bonjour `_antitracker._tcp`).
+/// - Le panneau d'appairage par QR code avec vérification visuelle du code court à 6 chiffres et de l'empreinte (`MAC-2`).
 /// - Un filtre par niveau de gravité (`Tous`, `Info`, `Alerte`, `Critique`).
 /// - L'historique des alertes reçues en mémoire vive (sans aucune persistance disque, `ARCH-7` / `I4`).
 /// - Le compteur de trames rejetées en sécurité (`D2` / `D3`).
-/// - Un bouton de purge immédiate en mémoire pour la fin de séance (`MAC-7` / `I4`).
+/// - Un bouton de purge immédiate en mémoire (historique + clés d'appairage) pour la fin de séance (`MAC-7` / `I4`).
 public struct CentraleMacView: View {
     @State private var viewModel: CentraleMacViewModel
     @State private var filtreNiveau: NiveauAlerte? = nil
@@ -23,12 +24,13 @@ public struct CentraleMacView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             enteteStatut
+            panneauAppairageQR
             barreOutilsFiltreEtPurge
             Divider()
             listeHistoriqueAlertes
         }
         .padding(20)
-        .frame(minWidth: 680, minHeight: 460)
+        .frame(minWidth: 740, minHeight: 560)
     }
 
     // MARK: - Sous-vues
@@ -71,6 +73,121 @@ public struct CentraleMacView: View {
         }
     }
 
+    /// Panneau dédié à l'appairage par QR code et à la confirmation visuelle de l'empreinte (`MAC-2`).
+    private var panneauAppairageQR: some View {
+        GroupBox {
+            HStack(spacing: 20) {
+                switch viewModel.etatAppairage {
+                case .nonAppaire:
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("Aucun iPhone appairé pour cette séance", systemImage: "qrcode")
+                            .font(.subheadline.bold())
+                        Text("Générez un QR code d'appairage éphémère en RAM pour lier votre iPhone capteur (contre S1, S4, E2).")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Générer QR d'appairage") {
+                        viewModel.genererQRCodeAppairage()
+                    }
+
+                case .qrCodeAffiche(let chargeQR, let donneesQR):
+                    #if canImport(CoreImage) && canImport(CoreGraphics)
+                    if let cgImage = GenerateurQRCode.genererImageQR(depuis: donneesQR) {
+                        Image(decorative: cgImage, scale: 1.0)
+                            .interpolation(.none)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 120, height: 120)
+                            .padding(6)
+                            .background(Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    #endif
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("Scannez ce QR code avec l'iPhone capteur", systemImage: "camera.viewfinder")
+                            .font(.subheadline.bold())
+                        Text("Service : \(chargeQR.nomService) (port \(chargeQR.port))")
+                            .font(.caption.monospaced())
+                        let empreinteMacCourte = chargeQR.empreinteClePubliqueMac.prefix(4)
+                            .map { String(format: "%02X", $0) }.joined()
+                        Text("Empreinte SHA-256 clé Mac : \(empreinteMacCourte)…")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Régénérer QR") {
+                        viewModel.genererQRCodeAppairage()
+                    }
+
+                case .attenteConfirmationEmpreinte(let codeCourt, let empreinteHex):
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("Vérifiez que ce code est identique sur l'iPhone (S4, H4) :", systemImage: "checkmark.shield")
+                            .font(.subheadline.bold())
+                        HStack(spacing: 16) {
+                            Text("Code court : \(codeCourt)")
+                                .font(.title3.monospaced().bold())
+                                .foregroundStyle(.blue)
+                            Text("Empreinte : \(empreinteHex)")
+                                .font(.callout.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    Button("Confirmer l'empreinte") {
+                        viewModel.confirmerAppairage()
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button("Refuser", role: .destructive) {
+                        viewModel.refuserAppairage()
+                    }
+
+                case .appaire(let empreinteIPhoneHex):
+                    HStack(spacing: 10) {
+                        Image(systemName: "lock.shield.fill")
+                            .foregroundStyle(.green)
+                            .font(.title2)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("iPhone capteur appairé et vérifié")
+                                .font(.subheadline.bold())
+                            Text("Empreinte clé publique iPhone (en RAM) : \(empreinteIPhoneHex)…")
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    Button("Révoquer et régénérer QR") {
+                        viewModel.genererQRCodeAppairage()
+                    }
+
+                case .rejete(let raison):
+                    HStack(spacing: 10) {
+                        Image(systemName: "xmark.shield.fill")
+                            .foregroundStyle(.red)
+                            .font(.title2)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Appairage rejeté en sécurité")
+                                .font(.subheadline.bold())
+                            Text(raison)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    Button("Nouveau QR d'appairage") {
+                        viewModel.genererQRCodeAppairage()
+                    }
+                }
+            }
+            .padding(8)
+        } label: {
+            Text("Appairage sécurisé iPhone ↔ Mac (MAC-2 – Clés en RAM)")
+                .font(.caption.bold())
+        }
+    }
+
     /// Barre de filtrage par niveau d'alerte et bouton de purge de fin de séance (`MAC-7`).
     private var barreOutilsFiltreEtPurge: some View {
         HStack {
@@ -88,9 +205,13 @@ public struct CentraleMacView: View {
             Button(role: .destructive) {
                 viewModel.purgerHistoriqueSession()
             } label: {
-                Label("Purger la session (RAM)", systemImage: "trash")
+                Label("Purger la session et les clés (RAM)", systemImage: "trash")
             }
-            .disabled(viewModel.alertesRecues.isEmpty && viewModel.nombreTramesRejetees == 0)
+            .disabled(
+                viewModel.alertesRecues.isEmpty &&
+                viewModel.nombreTramesRejetees == 0 &&
+                viewModel.etatAppairage == .nonAppaire
+            )
         }
     }
 

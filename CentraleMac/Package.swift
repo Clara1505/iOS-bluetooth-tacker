@@ -8,7 +8,7 @@ let package = Package(
         .iOS(.v17)
     ],
     products: [
-        // Bibliothèque principale contenant les modèles, services et vues (testable par CentraleMacTests).
+        // Bibliothèque principale contenant le module crypto isolé, les modèles, services et vues.
         .library(
             name: "CentraleMacCore",
             targets: ["CentraleMacCore"]
@@ -29,6 +29,7 @@ let package = Package(
                 "Package.swift"
             ],
             sources: [
+                "Crypto",
                 "Models",
                 "Services",
                 "ViewModels",
