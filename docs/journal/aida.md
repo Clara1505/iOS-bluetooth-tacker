@@ -45,3 +45,9 @@ Format d'une entrée :
 - **Date et heure** : 2026-11-24 10:21
 - **Auteur** : Aïda
 - **Prompt** : "explique le fonctionnement du Multipeer Connectivity et les recommandations d'Apple"
+
+---
+
+- **Date et heure** : 2026-11-24 10:21
+- **Auteur** : Aïda
+- **Prompt** : "propose des failles qu'on pourrait tester"
