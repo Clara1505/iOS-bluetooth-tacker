@@ -13,6 +13,10 @@ enum ReglesBalayage {
     static let rssiMinimum = -127
     /// Longueur maximale d'un nom annoncé, en caractères (T5).
     static let longueurNomMaximale = 64
+    /// Nombre maximal d'appareils gardés pendant un balayage (plafond de sécurité, D1).
+    /// Proposition à valider par le groupe : largement au-dessus d'un lieu public courant
+    /// (hypothèse non mesurée), mais assez bas pour que la liste reste affichable.
+    static let plafondAppareils = 200
 
     /// Indique pourquoi le contrôle est impossible dans l'état Bluetooth donné (D4).
     /// - Parameter etat: état du Bluetooth de l'iPhone.

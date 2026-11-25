@@ -52,7 +52,7 @@ final class ServiceBalayageBluetooth: NSObject, ServiceBalayage {
         gestionnaire.stopScan()
 
         if interrompu { return .controleImpossible(.interrompu) }
-        return .complet(collecteur.appareils)
+        return .complet(collecteur.appareils, plafondAtteint: collecteur.plafondAtteint)
     }
 
     /// Crée le gestionnaire au premier besoin (ce qui affiche la demande de permission)

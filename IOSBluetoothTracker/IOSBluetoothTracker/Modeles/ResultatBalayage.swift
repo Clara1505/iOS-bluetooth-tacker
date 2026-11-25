@@ -23,7 +23,9 @@ enum RaisonEchec: Equatable, Sendable {
 /// jamais `.complet([])`. Sinon l'app afficherait « aucun appareil » alors qu'elle n'a rien vérifié.
 enum ResultatBalayage: Equatable, Sendable {
     /// Le balayage s'est déroulé en entier ; la liste peut être vide.
-    case complet([AppareilDetecte])
+    /// `plafondAtteint` vaut `true` si trop d'appareils ont été vus et que la liste a été limitée (D1) :
+    /// l'écran doit alors afficher un avertissement.
+    case complet([AppareilDetecte], plafondAtteint: Bool = false)
     /// Le balayage n'a pas pu être fait ou a été interrompu.
     case controleImpossible(RaisonEchec)
 }
