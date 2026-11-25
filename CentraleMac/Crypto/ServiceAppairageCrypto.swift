@@ -235,6 +235,17 @@ public protocol ServiceAppairageCryptoProtocol: AnyObject {
     var estAppaire: Bool { get }
     /// Clé publique P-256 d'identité de l'iPhone appairé (uniquement disponible lorsque `etat` est `.appaire`).
     var clePubliqueIPhoneAppaire: P256.Signing.PublicKey? { get }
+    /// Clé publique P-256 d'identité de la centrale Mac générée en RAM pour la séance courante.
+    var clePubliqueIdentiteMac: P256.Signing.PublicKey? { get }
+
+    /// Signe un bloc de données avec la clé privée d'identité P-256 du Mac (sans jamais exposer la clé privée hors de ce service).
+    ///
+    /// Utilisé par `MAC-3` (`ServiceCanalChiffreCrypto`) pour signer la clé publique ECDH éphémère de session du Mac (`S1`).
+    ///
+    /// - Parameter donnees: Les octets à signer (ex. contexte + clé éphémère ECDH).
+    /// - Returns: La signature ECDSA P-256 (`ECDSASignature`).
+    /// - Throws: `ErreurAppairageCrypto.etatAppairageInvalide` si la centrale n'est pas en état `.appaire`.
+    func signerAvecIdentiteMac(_ donnees: Data) throws -> P256.Signing.ECDSASignature
 
     /// Génère une nouvelle paire de clés d'identité P-256 en RAM et prépare la charge utile du QR code.
     ///
@@ -294,14 +305,29 @@ public final class ServiceAppairageCrypto: ServiceAppairageCryptoProtocol {
     /// Clé publique de l'iPhone validée après confirmation de l'empreinte par l'utilisateur.
     public private(set) var clePubliqueIPhoneAppaire: P256.Signing.PublicKey?
 
+    public var clePubliqueIdentiteMac: P256.Signing.PublicKey? {
+        clePriveeIdentiteMac?.publicKey
+    }
+
     public var estAppaire: Bool {
-        if case .appaire = etat, clePubliqueIPhoneAppaire != nil {
+        if case .appaire = etat, clePubliqueIPhoneAppaire != nil, clePriveeIdentiteMac != nil {
             return true
         }
         return false
     }
 
     public init() {}
+
+    public func signerAvecIdentiteMac(_ donnees: Data) throws -> P256.Signing.ECDSASignature {
+        guard estAppaire, let clePriveeMac = clePriveeIdentiteMac else {
+            throw ErreurAppairageCrypto.etatAppairageInvalide
+        }
+        do {
+            return try clePriveeMac.signature(for: donnees)
+        } catch {
+            throw ErreurAppairageCrypto.signaturePreuveInvalide
+        }
+    }
 
     // MARK: - Étape 1 : Génération de la clé d'identité Mac en RAM et du QR code
 

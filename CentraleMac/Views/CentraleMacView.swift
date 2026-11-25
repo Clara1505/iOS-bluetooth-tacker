@@ -1,15 +1,16 @@
 #if canImport(SwiftUI)
 import SwiftUI
 
-/// Vue principale de la centrale Mac (`MAC-1` et `MAC-2`).
+/// Vue principale de la centrale Mac (`MAC-1`, `MAC-2` et `MAC-3`).
 ///
 /// Affiche :
 /// - L'état de l'écouteur TCP local (`Network.framework` / Bonjour `_antitracker._tcp`).
 /// - Le panneau d'appairage par QR code avec vérification visuelle du code court à 6 chiffres et de l'empreinte (`MAC-2`).
+/// - L'état du canal chiffré (ECDH P-256 éphémère signé, HKDF-SHA256 à 1 clé par sens, AES-256-GCM) (`MAC-3`).
 /// - Un filtre par niveau de gravité (`Tous`, `Info`, `Alerte`, `Critique`).
 /// - L'historique des alertes reçues en mémoire vive (sans aucune persistance disque, `ARCH-7` / `I4`).
 /// - Le compteur de trames rejetées en sécurité (`D2` / `D3`).
-/// - Un bouton de purge immédiate en mémoire (historique + clés d'appairage) pour la fin de séance (`MAC-7` / `I4`).
+/// - Un bouton de purge immédiate en mémoire (historique + clés de session + clés d'appairage) pour la fin de séance (`MAC-7` / `I4`).
 public struct CentraleMacView: View {
     @State private var viewModel: CentraleMacViewModel
     @State private var filtreNiveau: NiveauAlerte? = nil
@@ -22,15 +23,16 @@ public struct CentraleMacView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             enteteStatut
             panneauAppairageQR
+            bandeauCanalChiffre
             barreOutilsFiltreEtPurge
             Divider()
             listeHistoriqueAlertes
         }
         .padding(20)
-        .frame(minWidth: 740, minHeight: 560)
+        .frame(minWidth: 760, minHeight: 600)
     }
 
     // MARK: - Sous-vues
@@ -188,6 +190,51 @@ public struct CentraleMacView: View {
         }
     }
 
+    /// Bandeau indiquant l'état du canal chiffré ECDH éphémère + HKDF-SHA256 + AES-256-GCM (`MAC-3`).
+    private var bandeauCanalChiffre: some View {
+        GroupBox {
+            HStack(spacing: 12) {
+                switch viewModel.etatCanalChiffre {
+                case .ferme:
+                    Image(systemName: "lock.slash")
+                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Canal chiffré fermé")
+                            .font(.subheadline.bold())
+                        Text("En attente de l'échange ECDH P-256 éphémère signé après confirmation de l'appairage.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                case .ouvert(let empreinteSessionHex):
+                    Image(systemName: "key.horizontal.fill")
+                        .foregroundStyle(.green)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Canal chiffré actif (ECDH P-256 éphémère • HKDF-SHA256 1 clé/sens • AES-256-GCM)")
+                            .font(.subheadline.bold())
+                        Text("ID session (RAM) : \(empreinteSessionHex)…")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                    }
+                case .verrouille(let raison):
+                    Image(systemName: "exclamationmark.lock.fill")
+                        .foregroundStyle(.red)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Canal verrouillé en sécurité")
+                            .font(.subheadline.bold())
+                        Text(raison)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+            }
+            .padding(6)
+        } label: {
+            Text("Canal chiffré (MAC-3 – Confidentialité persistante I1 & Intégrité T1)")
+                .font(.caption.bold())
+        }
+    }
+
     /// Barre de filtrage par niveau d'alerte et bouton de purge de fin de séance (`MAC-7`).
     private var barreOutilsFiltreEtPurge: some View {
         HStack {
@@ -210,7 +257,8 @@ public struct CentraleMacView: View {
             .disabled(
                 viewModel.alertesRecues.isEmpty &&
                 viewModel.nombreTramesRejetees == 0 &&
-                viewModel.etatAppairage == .nonAppaire
+                viewModel.etatAppairage == .nonAppaire &&
+                viewModel.etatCanalChiffre == .ferme
             )
         }
     }
