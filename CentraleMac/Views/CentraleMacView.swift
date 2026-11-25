@@ -211,7 +211,7 @@ public struct CentraleMacView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Canal chiffré actif (ECDH P-256 éphémère • HKDF-SHA256 1 clé/sens • AES-256-GCM)")
                             .font(.subheadline.bold())
-                        Text("ID session (RAM) : \(empreinteSessionHex)…")
+                        Text("ID session (RAM) : \(empreinteSessionHex)… • Dernier compteur signé accepté (MAC-4) : \(viewModel.dernierCompteurAntiRejeu)")
                             .font(.caption.monospaced())
                             .foregroundStyle(.secondary)
                     }
