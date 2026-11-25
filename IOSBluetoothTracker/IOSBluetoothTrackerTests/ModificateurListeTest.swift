@@ -1,6 +1,5 @@
 import Foundation
 import Testing
-///@testable import TrackerBluetooth
 @testable import IOSBluetoothTracker
 
 /// Faux stockage : enregistre les appels et renvoie l'erreur demandée.
