@@ -1,5 +1,7 @@
 # Plan de tests de sécurité – Tracker Bluetooth anti-traçage
 
+> **Mise à jour du 26/11 (PM-11)** : le projet passe à Xcode 16.2 et iOS 15 minimum, et tout se compile sur le MacBook Air de Clara. Les Macs prêtés ne servent plus : « Mac prêté » désigne ici le Mac qui héberge la centrale (désormais celui de Clara), dont les règles « sans état persistant » restent inchangées. Sur iPhone, « Face ID » se lit « biométrie (Face ID ou Touch ID) » et le mode `faceID` devient `biometrie` dans le code (valeur stockée inchangée). Voir `CLAUDE.md` §5 et §6.
+
 > Références : `STRIDE.md` (menaces), `CHOIX_CRYPTO.md` (mécanismes), CLAUDE.md section 7 (tests).
 > Règle de vérification (CLAUDE.md, section 5) : un test qui passe ne prouve pas que la fonction est sûre.
 > Chaque test cherche à **casser** le mécanisme, pas seulement à vérifier qu'il fonctionne.
@@ -25,7 +27,7 @@ section 7 pour mémoire ; ils relèvent d'autres tâches.
 - **Tests unitaires d'abord** pour tout ce qui peut être simulé (crypto, parsing, règles de rejet) :
   ils sont rapides, rejouables, et ne dépendent ni du Mac prêté ni du réseau de l'école.
 - **Tests sur appareil** pour ce qui ne se simule pas : comportement Bluetooth réel, Secure Enclave,
-  Face ID, réseau local.
+  biométrie (Face ID ou Touch ID), réseau local.
 - **Pas d'outil tiers sans validation de l'équipe** : l'attaquant réseau est un petit client de test écrit en
   Swift dans le projet (section 4), pas un outil téléchargé.
 - **Aucune donnée réelle** dans les jeux de test : identifiants, noms et positions sont fictifs.
@@ -141,7 +143,7 @@ Les tests réseau (C) dépendent du format des messages, à fixer dans `PROTOCOL
 
 | Menace | Test | Tâche |
 |---|---|---|
-| E1, R2 | Annuler Face ID puis le code : modification impossible ; modification avec le code : signalée à la prochaine ouverture | TRU-3, QA-3 |
+| E1, R2 | Annuler la biométrie puis le code : modification impossible ; modification avec le code : signalée à la prochaine ouverture | TRU-3, QA-3 |
 | D4 | Lancer un contrôle avec le Bluetooth coupé, puis avec la permission refusée : « contrôle impossible » affiché | IOS-2 |
 | I1 | Capture du trafic : aucun contenu en clair | MAC-3 |
 | I2 | Lecture de la console pendant un balayage : aucun identifiant ni position | TRU-4 |

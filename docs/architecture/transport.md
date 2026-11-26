@@ -1,5 +1,7 @@
 # ARCH-2 – Choix et justification du transport iPhone ↔ Mac
 
+> **Mise à jour du 26/11 (PM-11)** : le projet passe à Xcode 16.2 et iOS 15 minimum, et tout se compile sur le MacBook Air de Clara. Les Macs prêtés ne servent plus : « Mac prêté » désigne ici le Mac qui héberge la centrale (désormais celui de Clara), dont les règles « sans état persistant » restent inchangées. Sur iPhone, « Face ID » se lit « biométrie (Face ID ou Touch ID) » et le mode `faceID` devient `biometrie` dans le code (valeur stockée inchangée). Voir `CLAUDE.md` §5 et §6.
+
 > **Statut : proposition décidée le 24/11/2026, à valider par le groupe.**
 > Responsable : Onur. Relecture : Aïda (sécurité et protocole), Clara (côté attaquant, RT-1 / RT-2).
 > Références : `docs/securite/STRIDE.md` (SEC-1), `docs/securite/CHOIX_CRYPTO.md` (SEC-3, section 3.7).
@@ -7,7 +9,7 @@
 
 ## 1. Décision retenue
 
-- **Framework de transport** : **`Network.framework`** (API native Apple, disponible sur iOS 17+ et macOS) en **TCP** (`NWParameters.tcp`), avec **`NWListener`** côté Mac (centrale) et **`NWConnection`** côté iPhone (capteur).
+- **Framework de transport** : **`Network.framework`** (API native Apple, disponible depuis iOS 12 et macOS 10.14, donc compatible avec la cible iOS 15 (la mention « iOS 17+ » était erronée)) en **TCP** (`NWParameters.tcp`), avec **`NWListener`** côté Mac (centrale) et **`NWConnection`** côté iPhone (capteur).
 - **Découverte et adressage** : annonce du service sur le réseau local via **Bonjour / mDNS** (`NWListener.Service`, type `_antitracker._tcp`) et/ou connexion directe par `hôte:port` transmis dans le QR code d'appairage (`MAC-2`).
 - **Topologie réseau en séance et démo** : utilisation d'un **partage de connexion (hotspot Wi-Fi) depuis un iPhone du groupe** auquel se connectent le Mac prêté et l'iPhone capteur, afin de contourner l'isolation des clients (*client isolation*) fréquente sur les réseaux Wi-Fi de campus.
 - **Principe de sécurité** : conformément à `CLAUDE.md` (section 6) et `STRIDE.md` (frontière `F3`), **le transport est considéré comme non fiable**. Toute la sécurité (authentification, confidentialité, intégrité, anti-rejeu) est assurée au niveau applicatif par notre protocole CryptoKit (`MAC-2`, `MAC-3`, `MAC-4`).

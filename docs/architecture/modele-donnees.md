@@ -1,5 +1,7 @@
 # ARCH-3 – Modèle de données (appareil observé, balayage, alerte, historique)
 
+> **Mise à jour du 26/11 (PM-11)** : le projet passe à Xcode 16.2 et iOS 15 minimum, et tout se compile sur le MacBook Air de Clara. Les Macs prêtés ne servent plus : « Mac prêté » désigne ici le Mac qui héberge la centrale (désormais celui de Clara), dont les règles « sans état persistant » restent inchangées. Sur iPhone, « Face ID » se lit « biométrie (Face ID ou Touch ID) » et le mode `faceID` devient `biometrie` dans le code (valeur stockée inchangée). Voir `CLAUDE.md` §5 et §6.
+
 > **Statut : proposition, à valider par le groupe.**
 > Responsables : Rachel et Eva. Relecture : Clara (côté attaquant), Aida (champs touchant aux données personnelles).
 > Référence : `docs/securite/STRIDE.md` (SEC-1), section 11 « Décisions ».
@@ -51,7 +53,7 @@ Un appareil que l'utilisateur a nommé lui-même lors de l'enrôlement (TRU-1).
 | `idHache` | Data (32 octets) | Même calcul que pour l'observation. |
 | `ajouteLe` | Date | |
 
-La liste est stockée chiffrée (AES-GCM, clé en Keychain, TRU-2). Son accès est conditionné à Face ID, avec repli sur le code de l'iPhone (décision STRIDE, E1 et RR6).
+La liste est stockée chiffrée (AES-GCM, clé en Keychain, TRU-2). Son accès est conditionné à la biométrie (Face ID ou Touch ID), avec repli sur le code de l'iPhone (décision STRIDE, E1 et RR6).
 
 ### 2.4 Historique des modifications de la liste (iPhone)
 
@@ -62,7 +64,7 @@ Traçabilité demandée par R2.
 | `date` | Date | |
 | `action` | enum : `ajout`, `suppression` | |
 | `nomAppareil` | String | |
-| `modeAuth` | enum : `faceID`, `code` | Une entrée `code` est signalée à la prochaine ouverture. |
+| `modeAuth` | enum : `biometrie` (stocké « faceID », format inchangé), `code` | Une entrée `code` est signalée à la prochaine ouverture. |
 
 Limité aux 20 dernières entrées. Chiffré avec la liste. Non supprimable depuis l'interface (STRIDE, R2).
 

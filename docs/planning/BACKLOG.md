@@ -1,5 +1,9 @@
 # Backlog – Projet iOS tracker Bluetooth anti-traçage
 
+> **Mise à jour du 26/11 (PM-11)** : le projet passe à Xcode 16.2 et iOS 15 minimum, et tout se compile sur le MacBook Air de Clara. Les Macs prêtés ne servent plus : « Mac prêté » désigne ici le Mac qui héberge la centrale (désormais celui de Clara), dont les règles « sans état persistant » restent inchangées. Sur iPhone, « Face ID » se lit « biométrie (Face ID ou Touch ID) » et le mode `faceID` devient `biometrie` dans le code (valeur stockée inchangée). Voir `CLAUDE.md` §5 et §6.
+
+> **Mise à jour du 26/11 (PM-11)** : le projet passe à Xcode 16.2 et iOS 15 minimum, et tout se compile sur le MacBook Air de Clara. Les Macs prêtés ne servent plus : « Mac prêté » désigne ici le Mac qui héberge la centrale (désormais celui de Clara), dont les règles « sans état persistant » restent inchangées. Sur iPhone, « Face ID » se lit « biométrie (Face ID ou Touch ID) » et le mode `faceID` devient `biometrie` dans le code (valeur stockée inchangée). Voir `CLAUDE.md` §5 et §6.
+
 > **Statut : proposition préparée avec Claude le 23/11/2026 (version 2), à relire et valider par Clara.**
 > Les responsables sont des propositions à confirmer avec le groupe.
 > Colonne **Séance** : `23/11`, `24/11`, `25/11` (séances de travail), `15/12` (démo), `HS` (hors séance, sans Mac, seulement si le groupe est d'accord), `Continu`.
@@ -13,7 +17,7 @@
 | Clara | Cheffe de projet et red team | Épopée PM (dépôt, jalons, journal, coordination), tests avec l'AirTag, dossier et soutenance ; épopée RT (attaque de l'app, rapports de failles), audit de l'app de l'autre groupe avec Aida |
 | Aida | Architecte sécurité | Épopée SEC, relecture de toute PR touchant à la crypto, tests de sécurité (QA-3), appui à l'audit avec Clara |
 | Rachel | Développeuse iOS | Balayage Bluetooth, détection et niveaux d'alerte (épopée IOS) |
-| Eva | Développeuse iOS | Liste de confiance, Face ID, protections des données, interface (épopée TRU) |
+| Eva | Développeuse iOS | Liste de confiance, biométrie (Face ID ou Touch ID), protections des données, interface (épopée TRU) |
 | Onur | Développeur iOS | Côté Mac, appairage QR, canal chiffré et événements signés (épopée MAC), transport (ARCH-2) |
 
 Tous : participent à l'architecture, au journal et à l'oral (chacun explique l'ensemble du code).
@@ -32,8 +36,9 @@ Chaque PR est relue par un membre différent de l'auteur, et par Aida si elle to
 | PM-5 | Valider la répartition des tâches (ce document) | 23/11 | Clara | P1 |
 | PM-6 | Regrouper les journaux dans `JOURNAL_PROMPTS.md` avec mention des fichiers individuels | HS ou 25/11 | Clara | P1 |
 | PM-7 | Préparer l'oral individuel : relire le code de toute l'équipe | HS | Tous | P1 |
-| PM-8 | Réinstaller l'app depuis un Mac prêté avant l'audit et avant la démo (expiration à 7 jours) | 25/11 et 15/12 (en arrivant) | Rachel, Eva et Onur (tour de rôle) | P1 |
-| PM-9 | Fin de chaque séance : tout est poussé sur Git, chacun se déconnecte de son compte Apple et de GitHub sur le Mac prêté | Continu | Tous | P1 |
+| PM-8 | Réinstaller l'app depuis le Mac de Clara avant l'audit et avant la démo (expiration à 7 jours). Mise à jour PM-11 : Clara est la seule à pouvoir compiler | 25/11 et 15/12 (en arrivant) | Clara | P1 |
+| PM-9 | Fin de chaque séance : tout est poussé sur Git. Mise à jour PM-11 : les Macs prêtés ne servent plus ; chacun se déconnecte de GitHub sur toute machine qui n'est pas la sienne | Continu | Tous | P1 |
+| PM-11 | Passer à Xcode 16.2 et iOS 15 minimum : code, tests, documentation, fiche de tests manuels (`docs/qualite/TESTS_PAR_PR.md`) | 26/11 | Clara (avec Claude) | P1 |
 | PM-10 | Vidéo de secours de la démo et tag Git de la version démontrée | 25/11 | Un développeur (Clara si disponible) | P1 |
 
 ## 3. Épopée SEC : sécurité (Aida)
@@ -59,7 +64,7 @@ Chaque PR est relue par un membre différent de l'auteur, et par Aida si elle to
 | ARCH-2 | Choisir le transport iPhone ↔ Mac et le justifier | 23/11 | Onur | P1 |
 | ARCH-3 | Définir le modèle de données (appareil observé, balayage, alerte, historique) | 23/11 | Rachel et Eva | P1 |
 | ARCH-4 | Spécifier les niveaux d'alerte et la règle de suivi inter-balayages | 23/11 | Rachel et Eva (relu par Clara) | P1 |
-| ARCH-5 | Trancher les points « à définir » restants du CLAUDE.md : version minimale d'iOS fixée à 17 (décidé le 23/11), à confirmer par l'installation sur l'iPhone 11 Pro Max ; reste le hachage et la crypto (SwiftUI, MVVM, Swift Testing et Xcode 27.2 sont décidés) | 23/11 | Le groupe | P1 |
+| ARCH-5 | Trancher les points « à définir » restants du CLAUDE.md : version minimale d'iOS fixée à 17 le 23/11, **remplacée le 26/11 par iOS 15 et Xcode 16.2 (PM-11)** pour inclure l'iPhone 7 ; reste le hachage et la crypto (SwiftUI, MVVM et Swift Testing sont décidés, Swift Testing sur iOS 15 à confirmer) | 23/11 | Le groupe | P1 |
 | ARCH-6 | Spike avec l'AirTag : vérifier sur l'iPhone ce que le Bluetooth expose réellement (identifiants, rotation, annonces Find My) | 24/11 (première activité) | Rachel et Clara | P1 |
 | ARCH-7 | Centrale sur un Mac prêté : fichiers temporaires, appairage et données de démo recréés à chaque séance, supprimés en fin de séance (décidé le 23/11) | 23/11 | Aida, Onur, Clara | P1 |
 
@@ -83,7 +88,7 @@ Chaque PR est relue par un membre différent de l'auteur, et par Aida si elle to
 |---|---|---|---|---|---|
 | TRU-1 | Mode d'enrôlement : nommer ses propres appareils | 24/11 | Eva | P1 | IOS-3 |
 | TRU-2 | Stockage chiffré de la liste (AES-GCM, clé en Keychain « ThisDeviceOnly ») | 24/11 | Eva | P1 | SEC-3 |
-| TRU-3 | Face ID obligatoire pour modifier la liste | 24/11 | Eva | P1 | TRU-2 |
+| TRU-3 | Biométrie (Face ID ou Touch ID) avec repli sur le code obligatoire pour modifier la liste | 24/11 | Eva | P1 | TRU-2 |
 | TRU-4 | Fichiers en protection « Complete », aperçu multitâche masqué, presse-papiers limité, logs sans donnée personnelle | 25/11 (début) | Eva | P1 | TRU-2 |
 | TRU-5 | Écrans : balayage, résultats, liste de confiance, réglages (version minimale) | 24/11 | Eva | P2 | IOS-3 |
 | TRU-6 | Hachage des identifiants et purge automatique | 25/11 | Eva | P2 | SEC-3 |

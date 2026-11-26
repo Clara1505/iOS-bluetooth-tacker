@@ -1,5 +1,7 @@
 # RT-2 – Scénarios et outils d'attaque (red team)
 
+> **Mise à jour du 26/11 (PM-11)** : le projet passe à Xcode 16.2 et iOS 15 minimum, et tout se compile sur le MacBook Air de Clara. Les Macs prêtés ne servent plus : « Mac prêté » désigne ici le Mac qui héberge la centrale (désormais celui de Clara), dont les règles « sans état persistant » restent inchangées. Sur iPhone, « Face ID » se lit « biométrie (Face ID ou Touch ID) » et le mode `faceID` devient `biometrie` dans le code (valeur stockée inchangée). Voir `CLAUDE.md` §5 et §6.
+
 > **Statut : proposition préparée avec Claude le 25/11/2026, à relire et valider par Clara (red team), puis à relire par Aïda.**
 > Responsable : Clara. Issue : RT-2 (#54), jalon J3.
 > Références : `docs/securite/STRIDE.md`, `docs/securite/PLAN_TESTS_SECURITE.md` (SEC-5), `docs/securite/redteam/RT-1-revue-schema-attaquant.md` (RT-1),
@@ -79,7 +81,7 @@
 
 | ID | Menace | Scénario (ce que fait l'attaquant) | Résultat attendu | Réf. SEC-5 | Moyen | Prio |
 |---|---|---|---|---|---|---|
-| RT2-23 | E1 | Annuler Face ID puis le code, ou échouer l'authentification, pour modifier la liste de confiance | Modification impossible | §7 (E1, TRU-3) | A | P1 |
+| RT2-23 | E1 | Annuler la biométrie (Touch ID sur iPhone 7, Face ID sur iPhone 11 Pro Max) puis le code, ou échouer l'authentification, pour modifier la liste de confiance | Modification impossible | §7 (E1, TRU-3) | A | P1 |
 | RT2-24 | R2, RR6 | Un proche qui connaît le code ajoute un traceur à la liste de confiance | Ajout possible (risque RR6 accepté) mais **signalé** à la prochaine ouverture et inscrit dans l'historique non supprimable. On vérifie aussi que le traceur ajouté ne déclenche plus d'alerte | §7 (R2) | A | P1 |
 | RT2-25 | T3 | Fichier de la liste modifié, vide, aléatoire, ou ancienne version correctement signée remise en place | Refus, aucun appareil de confiance, utilisateur prévenu, pas de plantage | REJ-8, FAL-10 à FAL-13, MAL-9 | U (P1) ; A (P2, si l'accès au fichier est possible) | P1 |
 | RT2-26 | I3, I6 | Passer en arrière-plan puis ouvrir le sélecteur d'apps ; vérifier la protection des fichiers de l'app | Aperçu masqué ; attribut de protection « Complete » présent | §7 (I3), TRU-4 | A + relecture | P2 |
@@ -99,7 +101,7 @@
 
 | Quand | Scénarios | Condition |
 |---|---|---|
-| Dès que l'app est installable sur un iPhone | RT2-01, RT2-04, RT2-23, RT2-24, RT2-26 (P2) | App installée (blocage actuel des Macs prêtés) |
+| Dès que l'app est installable sur un iPhone | RT2-01, RT2-04, RT2-23, RT2-24, RT2-26 (P2) | App installée depuis le Mac de Clara (les Macs prêtés ne servent plus, PM-11) |
 | Dès que la centrale reçoit des messages (MAC-1) et que `PROTOCOLE.md` existe | RT2-10, RT2-12, RT2-14, RT2-15, RT2-18 | Client attaquant (O1) |
 | Quand MAC-2 existe | RT2-07, RT2-09, RT2-10 | Appairage QR |
 | Fin de séance du 25/11 | RT2-20, RT2-21, RT2-22 | Mac prêté encore accessible, avant la déconnexion des comptes |

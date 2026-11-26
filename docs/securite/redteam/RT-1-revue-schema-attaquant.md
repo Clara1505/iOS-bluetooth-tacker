@@ -1,5 +1,7 @@
 # RT-1 – Revue du schéma d'architecture côté attaquant
 
+> **Mise à jour du 26/11 (PM-11)** : le projet passe à Xcode 16.2 et iOS 15 minimum, et tout se compile sur le MacBook Air de Clara. Les Macs prêtés ne servent plus : « Mac prêté » désigne ici le Mac qui héberge la centrale (désormais celui de Clara), dont les règles « sans état persistant » restent inchangées. Sur iPhone, « Face ID » se lit « biométrie (Face ID ou Touch ID) » et le mode `faceID` devient `biometrie` dans le code (valeur stockée inchangée). Voir `CLAUDE.md` §5 et §6.
+
 > **Statut : proposition préparée avec Claude le 24/11/2026, à relire par Clara (red team), puis par Aïda et Onur.**
 > Responsable : Clara (red team). Relecture : Aïda (sécurité), Onur (architecture et transport).
 > Menaces visées : toutes celles des frontières F1 à F5 de `docs/securite/STRIDE.md`, avec un accent sur S1, S4, E2, D2, D3, T2, I4.
@@ -18,7 +20,7 @@
 | **F2** QR code → iPhone | M2, M6 | QR d'un autre Mac ; QR vide, trop long, mauvais format ; second client qui se connecte pendant l'appairage ; confirmation du code court avec des codes différents | S1, S4, T4, E2 | RT-4 (25/11) | iPhone + Mac ; les QR de test se génèrent sur n'importe quel ordinateur |
 | **F3** Réseau local iPhone ↔ Mac | M2 | Écoute du trafic ; modification d'un octet ; rejeu d'un message valide ; message signé par une autre clé ; en-tête de taille 0 ou 0xFFFFFFFF ; trame tronquée ; flood de connexions et de messages ; client non appairé ; coupure réseau | I1, T1, T2, S2, D3, D2, E2, D5 | RT-2 prépare (24/11), RT-4 exécute (25/11) | Un poste sur le même réseau que le Mac (voir §4) + la centrale qui tourne |
 | **F4** Mac prêté | M5 | Données restant sur le disque après la purge ; logs console ; comptes ou secrets laissés ouverts | I4, I2, E3 | Fin de séance du 25/11 | Le Mac prêté lui-même |
-| **F5** Utilisateur → iPhone | M4 | Face ID annulé ou échoué ; modification avec le code (signalement) ; fichier de la liste corrompu ; ancienne liste correctement signée remise en place ; aperçu multitâche ; fichiers lisibles iPhone verrouillé | E1, R2, T3, I3, I6 | RT-3 / RT-4 | iPhone + app installée |
+| **F5** Utilisateur → iPhone | M4 | Biométrie annulée ou échouée ; modification avec le code (signalement) ; fichier de la liste corrompu ; ancienne liste correctement signée remise en place ; aperçu multitâche ; fichiers lisibles iPhone verrouillé | E1, R2, T3, I3, I6 | RT-3 / RT-4 | iPhone + app installée |
 
 ## 2. Constats
 
@@ -53,7 +55,7 @@ Ce ne sont pas des failles. Ce sont les points qui peuvent faire changer la conc
 | Hotspot iPhone : Bonjour et TCP entre iPhone et Mac | Tout le canal (MAC-1) | `transport.md` §2 |
 | `userPresence` sur clé Secure Enclave, lecture de la clé publique sans authentification | TRU-2, TRU-3, E1 | `CHOIX_CRYPTO.md` §3.6 |
 | Keychain conservé après désinstallation | Nettoyage du premier lancement | `CHOIX_CRYPTO.md` §3.8 |
-| Détection Face ID ou code | Historique R2 | `CHOIX_CRYPTO.md` §3.6 |
+| Détection biométrie ou code | Historique R2 | `CHOIX_CRYPTO.md` §3.6 |
 
 ### C6 – Incohérences entre issues et documents (à corriger côté backlog)
 - **IOS-2 (#29)** vise « E3 », qui dans le STRIDE désigne l'accès aux secrets de l'équipe via le Mac prêté. La menace pertinente pour IOS-2 semble être **D4** (contrôle impossible affiché comme « aucun traceur ») : à confirmer par Aïda. Le critère D4 n'est pas écrit dans le corps de l'issue.

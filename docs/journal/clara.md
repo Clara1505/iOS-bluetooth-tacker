@@ -223,3 +223,23 @@ depuis l'historique de la conversation.
 - **Date et heure** : 2026-11-25 10:21
 - **Auteur** : Clara
 - **Prompt** : le document me semble bien, quel est la prochaine étape ? il faut que je le transmette a Onur et Aida ? et après ? Soit précis et si il y a besoin de créer des branches, des commit ou des PR n'hésite pas a me faire des propositions
+---
+- **Date et heure** : 2026-11-26 [HH:MM à compléter]
+- **Auteur** : Clara
+- **Prompt** : [demande initiale de passage à Xcode 16.2 et iOS 15 minimum (Macs prêtés sans compte iCloud, MacBook Air 2018, iPhone 7) : à recopier depuis l'historique de la discussion, texte non disponible dans ce résumé]
+---
+- **Date et heure** : 2026-11-26 [HH:MM à compléter]
+- **Auteur** : Clara
+- **Prompt** : dans un cas comme dans l'autre, on va faire un premier commit avant migration. Refait un point sur le repo, normalement il reste 4 PR d'Onur, le code a été écrit pour Xcode 16.2, penses tu qu'il faille le fusionner maintenant ? Ou attendre d'avoir fait la migration ? Dans tous les cas, il faut partir sur une base de code propre afin d'être sur de ne pas perdre de fonctionnalité au passage. Tests a chaque fois que tu réécris quelque chose afin d'être sur de garder le comportement attendu
+---
+- **Date et heure** : 2026-11-26 [HH:MM à compléter]
+- **Auteur** : Clara
+- **Prompt** : 1. oui on va fusionner le code d'Onu, comme ca on aura tout Eton fera le debug sur le complet, 2. pour tru-6, si c'est possible, ca attendra la migration, je n'est pas de PR ouverte pour cette issues 3. il ne contient rien actuellement, je dois le remplir avant le rendu avec le contenu des fichiers <prenom>.md
+---
+- **Date et heure** : 2026-11-26 [HH:MM à compléter]
+- **Auteur** : Clara
+- **Prompt** : Bon, ce qu'on va faire, c'est migrer dev (le code le plus a jour), faire en sorte que tout soit fonctionnelle, et ensuite on gérera les PR restante d'Onur. Le code est gelé.
+---
+- **Date et heure** : 2026-11-26 11:02
+- **Auteur** : Clara
+- **Prompt** : Occupe toi maintenantt de la documentation, de la mise en place de la fiche de tests, du journal, de la mise a jour des issues. N'ouvre pas la PR tout de suite, tu vas d'abord me guider pour les tests, une fois qu'on aura la liste exhaustive des bugs, on previendra les autres

@@ -1,5 +1,7 @@
 # Modèle de menaces STRIDE – Tracker Bluetooth anti-traçage
 
+> **Mise à jour du 26/11 (PM-11)** : le projet passe à Xcode 16.2 et iOS 15 minimum, et tout se compile sur le MacBook Air de Clara. Les Macs prêtés ne servent plus : « Mac prêté » désigne ici le Mac qui héberge la centrale (désormais celui de Clara), dont les règles « sans état persistant » restent inchangées. Sur iPhone, « Face ID » se lit « biométrie (Face ID ou Touch ID) » et le mode `faceID` devient `biometrie` dans le code (valeur stockée inchangée). Voir `CLAUDE.md` §5 et §6.
+
 > **Statut : brouillon du STRIDE (SEC-1).**
 > Les notes de risque et les contre-mesures sont des **propositions**. Les choix crypto définitifs seront justifiés dans CHOIX_CRYPTO
 > Règle de vérification (CLAUDE.md, section 5) : tout comportement non testé est marqué **[Hypothèse]**.
@@ -88,7 +90,7 @@ flowchart LR
         HIS[(Historique)]
     end
 
-    U -- Face ID, actions --> APP
+    U -- Biométrie, actions --> APP
     BLE -- annonces BLE --> APP
     APP <--> KS
     APP <--> FS
@@ -113,7 +115,7 @@ flowchart LR
 |---|---|---|
 | H1 | iOS masque l'adresse matérielle et les identifiants vus par l'app peuvent changer entre deux balayages | **[Hypothèse]** à vérifier avec l'AirTag (ARCH-6) |
 | H2 | Les annonces d'un traceur Find My sont reconnaissables par l'app | **[Hypothèse]** à vérifier avec l'AirTag (ARCH-6) |
-| H3 | La Secure Enclave et le Keychain de l'iPhone sont fiables (iPhone non jailbreaké) | Hypothèse de confiance assumée |
+| H3 | La Secure Enclave et le Keychain de l'iPhone sont fiables (iPhone non jailbreaké) | Hypothèse de confiance assumée. **Affaiblie le 26/11 (PM-11)** : l'iPhone 7 (iOS 15.8.7) est ancien ; l'existence de failles connues sur sa puce n'est pas vérifiée ici (hypothèse à vérifier par Aida), voir RR9 |
 | H4 | L'utilisateur compare réellement l'empreinte affichée lors de l'appairage | Hypothèse sur l'utilisateur, à faciliter par l'interface |
 | H5 | Le Mac prêté n'est pas compromis pendant la séance | Hypothèse de confiance assumée, limitée par la purge (MAC-7) |
 
@@ -146,7 +148,7 @@ Statut : `Ouvert`, `En cours`, `Couvert` (contre-mesure implémentée **et test�
 | ID | Menace | Acteur | Cible | P | Im | Niv | Contre-mesure proposée | Backlog | Test prévu | Statut |
 |---|---|---|---|---|---|---|---|---|---|---|
 | R1 | Impossible de prouver quel iPhone a émis une alerte | M2 | A6 | 1 | 2 | Faible | Signature par une clé non exportable (A3) | MAC-4 | Vérification de signature côté Mac | Ouvert |
-| R2 | Ajout d'un appareil à la liste de confiance sans trace | M4 | A2 | 2 | 3 | Élevé | Historique local des modifications (date, action, appareil, mode d'authentification Face ID ou code), chiffré et signé avec la liste, non supprimable depuis l'interface, 20 dernières entrées conservées ; toute modification faite avec le code est signalée à la prochaine ouverture (décision du 23/11) ; **[Hypothèse]** détection du mode d'authentification à vérifier | TRU-3, TRU-7 (proposée) | Modifier la liste avec le code : signalement à la prochaine ouverture ; aucune entrée supprimable depuis l'interface | Ouvert |
+| R2 | Ajout d'un appareil à la liste de confiance sans trace | M4 | A2 | 2 | 3 | Élevé | Historique local des modifications (date, action, appareil, mode d'authentification biométrie ou code), chiffré et signé avec la liste, non supprimable depuis l'interface, 20 dernières entrées conservées ; toute modification faite avec le code est signalée à la prochaine ouverture (décision du 23/11) ; **[Hypothèse]** détection du mode d'authentification à vérifier | TRU-3, TRU-7 (proposée) | Modifier la liste avec le code : signalement à la prochaine ouverture ; aucune entrée supprimable depuis l'interface | Ouvert |
 
 ### I – Divulgation d'information
 
@@ -174,7 +176,7 @@ Statut : `Ouvert`, `En cours`, `Couvert` (contre-mesure implémentée **et test�
 
 | ID | Menace | Acteur | Cible | P | Im | Niv | Contre-mesure proposée | Backlog | Test prévu | Statut |
 |---|---|---|---|---|---|---|---|---|---|---|
-| E1 | Contourner Face ID pour modifier la liste de confiance, notamment un proche qui connaît le code de l'iPhone | M4 | A2 | 2 | 3 | Élevé | Face ID avec repli sur le code de l'iPhone, imposé par la Secure Enclave (`userPresence`) et non par une condition dans le code (MASTG-TEST-0266) ; risque résiduel RR6 accepté (décisions du 23/11) | TRU-3 | Annuler l'authentification : modification impossible ; Face ID échoué puis code correct : modification autorisée | Ouvert (RR6) |
+| E1 | Contourner la biométrie (Face ID ou Touch ID) pour modifier la liste de confiance, notamment un proche qui connaît le code de l'iPhone | M4 | A2 | 2 | 3 | Élevé | Biométrie (Face ID ou Touch ID) avec repli sur le code de l'iPhone, imposé par la Secure Enclave (`userPresence`) et non par une condition dans le code (MASTG-TEST-0266) ; risque résiduel RR6 accepté (décisions du 23/11) | TRU-3 | Annuler l'authentification : modification impossible (à tester avec Touch ID sur l'iPhone 7 et Face ID sur l'iPhone 11 Pro Max : **hypothèse non testée**) ; biométrie échouée puis code correct : modification autorisée | Ouvert (RR6) |
 | E2 | Un appareil non appairé obtient le statut de pair de confiance auprès du Mac | M2 | A5, A6 | 1 | 3 | Moyen | Appairage uniquement par QR code ; tout autre pair est rejeté | MAC-2, MAC-6 | Connexion d'un client non appairé : rejet | Ouvert |
 | E3 | Accès aux comptes ou secrets de l'équipe via le Mac prêté | M5 | Dépôt, comptes | 2 | 3 | Élevé | Déconnexion systématique ; aucun secret, certificat ni profil dans le dépôt | PM-9, PM-1 | Checklist de fin de séance | Ouvert |
 
@@ -203,8 +205,11 @@ Statut : `Ouvert`, `En cours`, `Couvert` (contre-mesure implémentée **et test�
 - **RR6** : avec le repli sur le code de l'iPhone, un proche qui connaît ce code peut
   ajouter son traceur à la liste de confiance (E1). Risque accepté le 23/11, réduit par
   l'historique des modifications (R2) : l'ajout n'est pas empêché, mais il est signalé.
-- **RR8** : la liste de confiance est lisible sur un iPhone déverrouillé, sans Face ID (I7).
+- **RR8** : la liste de confiance est lisible sur un iPhone déverrouillé, sans biométrie (I7).
   Conséquence du choix de ne pas demander d'authentification à chaque balayage.
+- **RR9** (ajouté le 26/11, PM-11) : l'app tourne sur un iPhone ancien (iPhone 7, iOS 15.8.7) qui ne reçoit plus de
+  mises à jour majeures. Les protections de la Secure Enclave et du Keychain (H3) y sont moins sûres que sur un iPhone récent.
+  Risque accepté pour la démo, à documenter à l'oral ; **à évaluer par Aida** (hypothèse non vérifiée).
 - **RR7** : le canal iPhone ↔ Mac est un protocole conçu par l'équipe à partir de primitives
   CryptoKit ; il n'a pas l'éprouvé d'un protocole standard comme TLS. Compensé par une
   documentation étape par étape et les tests QA-3.
@@ -230,7 +235,7 @@ Statut : `Ouvert`, `En cours`, `Couvert` (contre-mesure implémentée **et test�
 
 | Point | Décision | Menaces liées |
 |---|---|---|
-| Authentification pour modifier la liste de confiance | Face ID avec repli sur le code de l'iPhone | E1, RR6 |
+| Authentification pour modifier la liste de confiance | Biométrie (Face ID ou Touch ID) avec repli sur le code de l'iPhone | E1, RR6 |
 | Hachage des identifiants | HMAC-SHA256, clé secrète stable en Keychain « ThisDeviceOnly », renouvelée seulement à la réinitialisation des données | I5 |
 | Durée de purge | 72 h, purge glissante | I5 |
 | Anti-rejeu | Compteur par session (principal), nonce, horodatage avec tolérance de 60 s | T2 |

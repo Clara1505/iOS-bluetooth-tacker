@@ -1,5 +1,7 @@
 # ARCH-1 – Schéma d'architecture iPhone ↔ Mac et frontières de confiance
 
+> **Mise à jour du 26/11 (PM-11)** : le projet passe à Xcode 16.2 et iOS 15 minimum, et tout se compile sur le MacBook Air de Clara. Les Macs prêtés ne servent plus : « Mac prêté » désigne ici le Mac qui héberge la centrale (désormais celui de Clara), dont les règles « sans état persistant » restent inchangées. Sur iPhone, « Face ID » se lit « biométrie (Face ID ou Touch ID) » et le mode `faceID` devient `biometrie` dans le code (valeur stockée inchangée). Voir `CLAUDE.md` §5 et §6.
+
 > **Statut : proposition rédigée le 24/11/2026, à valider par Aïda et à relire côté attaquant par Clara (RT-1).**
 > Responsables : Aïda et Onur. Relecture : Clara (RT-1).
 > Références : `docs/securite/STRIDE.md` (SEC-1), `docs/securite/CHOIX_CRYPTO.md` (SEC-3), `docs/architecture/modele-donnees.md` (ARCH-3), `docs/architecture/niveaux-alerte.md` (ARCH-4), `docs/architecture/transport.md` (ARCH-2).
@@ -20,10 +22,10 @@ flowchart TB
     end
 
     subgraph F5_USER["Frontière F5 : Accès physique à l'iPhone (Utilisateur / Proche M4)"]
-        USER(["Utilisateur<br/>(Face ID / Code, scan QR, comparaison d'empreinte)"])
+        USER(["Utilisateur<br/>(Biométrie / Code, scan QR, comparaison d'empreinte)"])
     end
 
-    subgraph IPHONE["Frontière iPhone : Capteur (iOS 17+, non jailbreaké - H3)"]
+    subgraph IPHONE["Frontière iPhone : Capteur (iOS 15 minimum, non jailbreaké - H3 ; hypothèse affaiblie sur iPhone 7, voir STRIDE)"]
         direction TB
         subgraph IPH_APP["Application iPhone (SwiftUI / MVVM)"]
             BLE_SRV["Service Bluetooth (CoreBluetooth)<br/>Validation, déduplication, plafond (D1, T5)"]
@@ -78,13 +80,13 @@ flowchart TB
     TRU_SRV <--> KC_AES
     TRU_SRV <--> KC_PUB
     TRU_SRV <--> FS_LISTE
-    TRU_SRV -- "Signature modification<br/>(exige Face ID / code)" --> SE_LISTE
+    TRU_SRV -- "Signature modification<br/>(exige biométrie / code)" --> SE_LISTE
     DET_SRV -- "Alerte détectée" --> NET_IPH
     NET_IPH -- "Signature ECDSA<br/>(clé éphémère & alerte)" --> SE_CANAL
     NET_IPH <--> KC_PUB
 
     %% Flux F5 : Utilisateur
-    USER -- "F5 : Contrôle de sécurité,<br/>Face ID / code (userPresence)" --> IPH_APP
+    USER -- "F5 : Contrôle de sécurité,<br/>biométrie / code (userPresence)" --> IPH_APP
     USER -. "F2/F5 : Compare et valide<br/>le code court sur les 2 écrans" .-> NET_IPH
     USER -. "F2/F5 : Confirme l'appairage" .-> CRYPTO_MAC
 
@@ -199,16 +201,16 @@ Chaque frontière correspond à un point d'entrée où un attaquant (`M1` à `M6
   1. **Absence totale de persistance sur disque (`ARCH-7`, `MAC-1`)** : ni les clés d'identité/session du Mac, ni les alertes reçues ne sont écrites dans des fichiers ou `UserDefaults` sur le Mac ; tout réside uniquement en mémoire vive (RAM).
   2. **Purge explicite en fin de séance (`MAC-7`)** : action de purge qui vide les structures en mémoire et invalide la session avant la fermeture de l'application (`I4`).
   3. **Silence des logs (`TRU-4`)** : interdiction de tout `print` contenant des clés, des positions, des jetons ou des identifiants Bluetooth (`I2`).
-  4. **Hygiène opérationnelle (`PM-9`)** : déconnexion systématique des comptes Apple et GitHub avant de restituer le Mac prêté.
+  4. **Hygiène opérationnelle (`PM-9`)** : mise à jour PM-11 : la centrale tourne sur le Mac de Clara, qui n'est plus restitué ; la règle « aucune persistance » reste appliquée (`ARCH-7`, `MAC-7`).
 
 ### Frontière `F5` : Utilisateur / Proche ↔ Interface iPhone et Stockage local
 - **Flux traversant** : consultation de l'écran, ajout ou suppression d'un appareil dans la liste de confiance, passage de l'application en arrière-plan (aperçu multitâche), accès aux fichiers locaux de l'iPhone.
 - **Acteur malveillant** : `M4` (proche ou traqueur ayant brièvement l'iPhone en main, déverrouillé ou non, et éventuellement connaissance du code de déverrouillage).
-- **Menaces STRIDE** : `T3` (altération ou restauration d'une ancienne liste de confiance sur disque), `R2` (ajout discret d'un traceur dans la liste de confiance), `I3` (lecture via l'aperçu multitâche ou le presse-papiers), `I6` (lecture des fichiers lorsque l'iPhone est verrouillé), `E1` (contournement de Face ID pour modifier la liste).
+- **Menaces STRIDE** : `T3` (altération ou restauration d'une ancienne liste de confiance sur disque), `R2` (ajout discret d'un traceur dans la liste de confiance), `I3` (lecture via l'aperçu multitâche ou le presse-papiers), `I6` (lecture des fichiers lorsque l'iPhone est verrouillé), `E1` (contournement de la biométrie pour modifier la liste).
 - **Garde-fous à la frontière** :
-  1. **Authentification matérielle liée à une clé (`CHOIX_CRYPTO.md` §3.6, `TRU-3`)** : toute modification de la liste de confiance doit être signée par une seconde clé P-256 de la Secure Enclave configurée avec le contrôle d'accès `userPresence` (Face ID ou repli sur le code de l'iPhone), ce qui empêche un contournement par simple modification de condition booléenne (`E1`, `MASTG-TEST-0266`).
+  1. **Authentification matérielle liée à une clé (`CHOIX_CRYPTO.md` §3.6, `TRU-3`)** : toute modification de la liste de confiance doit être signée par une seconde clé P-256 de la Secure Enclave configurée avec le contrôle d'accès `userPresence` (biométrie Face ID ou Touch ID, ou repli sur le code de l'iPhone), ce qui empêche un contournement par simple modification de condition booléenne (`E1`, `MASTG-TEST-0266`).
   2. **Chiffrement et anti-restauration (`TRU-2`)** : la liste et son historique sont chiffrés ensemble en `AES-256-GCM` (clé en Keychain `ThisDeviceOnly`) et signés avec un **numéro de version croissant** dont la dernière valeur est stockée dans le Keychain (`T3`). En cas d'échec de vérification, l'app échoue en sécurité (aucun appareil n'est considéré de confiance).
-  3. **Journal d'audit non supprimable (`R2`)** : les 20 dernières modifications (date, action, nom, mode `faceID` ou `code`) sont conservées dans le bloc chiffré/signé, sans bouton de suppression, et toute modification effectuée avec le code est signalée à l'ouverture suivante (atténuation du risque résiduel `RR6`).
+  3. **Journal d'audit non supprimable (`R2`)** : les 20 dernières modifications (date, action, nom, mode `biometrie` ou `code` (valeur stockée « faceID » conservée)) sont conservées dans le bloc chiffré/signé, sans bouton de suppression, et toute modification effectuée avec le code est signalée à l'ouverture suivante (atténuation du risque résiduel `RR6`).
   4. **Protection système (`TRU-4`)** : fichiers écrits avec `NSFileProtectionComplete` (`I6`), floutage/masquage de l'écran lors du passage en arrière-plan (`I3`), nettoyage complet du Keychain au premier lancement après réinstallation (`CHOIX_CRYPTO.md` §3.8).
 
 ## 5. Récapitulatif de couverture des actifs (`A1` à `A8`)
@@ -230,4 +232,4 @@ Chaque frontière correspond à un point d'entrée où un attaquant (`M1` à `M6
 - **Vérification des hypothèses architecturales sur matériel réel** :
   - **[Hypothèse H1 / H2]** (`ARCH-6`) : comportement réel des identifiants et annonces d'un AirTag lors du balayage CoreBluetooth sur iPhone.
   - **[Hypothèse Réseau]** (`ARCH-2` / `MAC-1`) : visibilité Bonjour et connexion TCP `Network.framework` entre l'iPhone et le Mac prêté sur le hotspot Wi-Fi d'un téléphone.
-  - **[Hypothèse Secure Enclave `userPresence`]** (`CHOIX_CRYPTO.md` §3.6 / `TRU-3`) : déclenchement de l'invite Face ID / code par la Secure Enclave lors de la signature de la liste de confiance et lecture libre de la clé publique pour la vérification.
+  - **[Hypothèse Secure Enclave `userPresence`]** (`CHOIX_CRYPTO.md` §3.6 / `TRU-3`) : déclenchement de l'invite biométrie / code par la Secure Enclave lors de la signature de la liste de confiance et lecture libre de la clé publique pour la vérification.

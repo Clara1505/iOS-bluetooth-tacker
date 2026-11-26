@@ -1,5 +1,7 @@
 # Choix cryptographiques – Tracker Bluetooth anti-traçage
 
+> **Mise à jour du 26/11 (PM-11)** : le projet passe à Xcode 16.2 et iOS 15 minimum, et tout se compile sur le MacBook Air de Clara. Les Macs prêtés ne servent plus : « Mac prêté » désigne ici le Mac qui héberge la centrale (désormais celui de Clara), dont les règles « sans état persistant » restent inchangées. Sur iPhone, « Face ID » se lit « biométrie (Face ID ou Touch ID) » et le mode `faceID` devient `biometrie` dans le code (valeur stockée inchangée). Voir `CLAUDE.md` §5 et §6.
+
 > Ce document justifie chaque choix crypto et le relie aux menaces de `STRIDE.md`.
 > Règle de vérification (CLAUDE.md, section 5) : **aucun de ces choix n'est encore implémenté ni testé**.
 > Les comportements non vérifiés sont marqués **[Hypothèse]**. Le format exact des messages relève de la
@@ -33,7 +35,7 @@
 | Durée de purge | 72 h, purge glissante | Décidé | I5 |
 | Confidentialité de la liste de confiance | AES-256-GCM, clé en Keychain « ThisDeviceOnly » | Décidé | I6 |
 | Intégrité de la liste de confiance | Signature par une clé Secure Enclave dédiée, protégée par `userPresence`, avec numéro de version | Décidé | T3, E1 |
-| Modification de la liste | Face ID avec repli sur le code de l'iPhone, historique des modifications | Décidé | E1, R2 (risques résiduels RR6, RR8) |
+| Modification de la liste | Biométrie (Face ID ou Touch ID) avec repli sur le code de l'iPhone, historique des modifications | Décidé | E1, R2 (risques résiduels RR6, RR8) |
 
 ## 3. Justification détaillée
 
@@ -154,7 +156,7 @@ l'utilisateur lui-même : il conserve les 20 dernières entrées, sans limite de
 ### 3.6 Liste de confiance : stockage, intégrité et modification
 
 **Décidé.**
-- Modification soumise à Face ID avec repli sur le code de l'iPhone (E1).
+- Modification soumise à la biométrie (Face ID ou Touch ID) avec repli sur le code de l'iPhone (E1).
 - Historique des modifications (R2) : date, action, appareil, mode d'authentification ; 20 dernières entrées ;
   non supprimable depuis l'interface ; toute modification faite avec le code est signalée à la prochaine ouverture.
 
@@ -165,7 +167,7 @@ dans le Keychain en « accessible quand l'iPhone est déverrouillé, ThisDeviceO
 d'authentification, pour pouvoir lire la liste à chaque balayage. Fichiers en protection « Complete ».
 
 *Intégrité.* Une **seconde clé**, de signature P-256, est créée dans la Secure Enclave, distincte de la clé
-d'identité du canal. Son contrôle d'accès est `userPresence` : la Secure Enclave exige Face ID ou le code de
+d'identité du canal. Son contrôle d'accès est `userPresence` : la Secure Enclave exige la biométrie (Face ID ou Touch ID) ou le code de
 l'iPhone avant chaque signature. Le bloc qui représente cette clé et sa clé publique sont stockés dans le
 Keychain en « ThisDeviceOnly », jamais à côté du fichier : sinon un attaquant pourrait remplacer le fichier et
 la clé publique ensemble.
@@ -186,14 +188,14 @@ version. Aucune authentification n'est demandée. En cas d'échec, aucun apparei
 confiance et l'utilisateur est prévenu (échec en sécurité).
 
 *Modification.* Ajouter l'entrée d'historique, rechiffrer, incrémenter la version, signer (la Secure Enclave
-demande Face ID ou le code), écrire le fichier, puis mettre à jour la version dans le Keychain.
+demande la biométrie ou le code), écrire le fichier, puis mettre à jour la version dans le Keychain.
 
 **Pourquoi.**
-- La protection ne repose pas sur une condition dans le code de l'app : sans Face ID ni code, il est impossible
+- La protection ne repose pas sur une condition dans le code de l'app : sans biométrie ni code, il est impossible
   de produire une liste valide. Une authentification par LocalAuthentication seule (`evaluatePolicy`) se
   contourne par instrumentation (MASTG-TEST-0266).
 - Une clé **asymétrique** est nécessaire : avec une clé symétrique (HMAC), la même clé sert à créer et à
-  vérifier ; si elle exige Face ID pour signer, elle l'exige aussi pour vérifier, donc à chaque balayage.
+  vérifier ; si elle exige la biométrie pour signer, elle l'exige aussi pour vérifier, donc à chaque balayage.
 
 **Choix du contrôle d'accès : `userPresence` plutôt que `biometryCurrentSet` (décidé le 23/11).**
 `biometryCurrentSet` invaliderait la clé si un visage ou un doigt est ajouté, mais seul il exige la biométrie
@@ -204,21 +206,21 @@ recréation de la clé. `userPresence` est donc cohérent avec E1.
 **Options écartées.**
 - Solution A (une seule clé AES et `evaluatePolicy` avant modification) : authentification contournable par
   instrumentation.
-- Solution C (Face ID à chaque ouverture de l'app) : gêne l'usage principal, un contrôle rapide.
+- Solution C (biométrie à chaque ouverture de l'app) : gêne l'usage principal, un contrôle rapide.
 
 **Limites et risques résiduels.**
 - **RR6** : une personne qui connaît le code peut modifier la liste ; l'historique le rend visible, sans l'empêcher.
-- **RR8** : sur un iPhone déverrouillé, la liste est lisible sans Face ID (I7). La signature empêche la
+- **RR8** : sur un iPhone déverrouillé, la liste est lisible sans biométrie (I7). La signature empêche la
   falsification, pas la lecture ; la liste ne révèle que les noms des appareils de l'utilisateur.
 - Sur un iPhone jailbreaké, la vérification elle-même peut être contournée (hors modèle, H3).
 - Le MASTG prévoit un test sur les API qui autorisent un repli vers une authentification non biométrique :
   la red team pourra relever le repli sur le code. Justification : RR6 et l'historique R2.
 
 **[Hypothèses à tester].**
-- Comportement d'une clé Secure Enclave protégée par `userPresence` : invite Face ID au moment de signer,
+- Comportement d'une clé Secure Enclave protégée par `userPresence` : invite biométrique (Face ID ou Touch ID) au moment de signer,
   repli sur le code.
 - Lecture de la clé publique sans authentification.
-- Moyen fiable de savoir si l'utilisateur s'est authentifié par Face ID ou par le code, pour l'historique R2.
+- Moyen fiable de savoir si l'utilisateur s'est authentifié par la biométrie ou par le code, pour l'historique R2.
   Piste : évaluer d'abord la biométrie seule avec un `LAContext`, puis le code en cas d'échec, et transmettre
   ce contexte à l'opération de signature. Le mode enregistré dépend alors de la logique de l'app.
 
@@ -281,7 +283,7 @@ version, clé d'identité si elle est conservée) puis repart d'une liste de con
 
 **Hypothèses à vérifier sur les iPhones** : persistance du Keychain après désinstallation ; comportement de
 `userPresence` sur une clé Secure Enclave ; lecture de la clé publique sans authentification ; détection du mode
-d'authentification (Face ID ou code) ; communication iPhone ↔ Mac sur le Wi-Fi de l'école.
+d'authentification (biométrie ou code) ; communication iPhone ↔ Mac sur le Wi-Fi de l'école.
 
 ## 6. Tests associés (QA-3, SEC-6)
 
@@ -295,4 +297,4 @@ d'authentification (Face ID ou code) ; communication iPhone ↔ Mac sur le Wi-Fi
 | Hachage | Même identifiant, même clé : même haché ; clé différente : haché différent |
 | Purge | Donnée de plus de 72 h : supprimée ; donnée de moins de 72 h : conservée |
 | Premier lancement | Après installation : nouvelles clés, liste vide, aucun ancien élément du Keychain |
-| Liste de confiance | Fichier modifié : refus et aucun appareil de confiance ; ancienne version correctement signée remise en place : refus ; signature par une autre clé : refus ; annulation de Face ID et du code : modification impossible ; modification avec le code : signalée à la prochaine ouverture |
+| Liste de confiance | Fichier modifié : refus et aucun appareil de confiance ; ancienne version correctement signée remise en place : refus ; signature par une autre clé : refus ; annulation de la biométrie et du code : modification impossible ; modification avec le code : signalée à la prochaine ouverture |

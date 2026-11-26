@@ -1,5 +1,7 @@
 # Planning – Projet iOS tracker Bluetooth anti-traçage
 
+> **Mise à jour du 26/11 (PM-11)** : le projet passe à Xcode 16.2 et iOS 15 minimum, et tout se compile sur le MacBook Air de Clara. Les Macs prêtés ne servent plus : « Mac prêté » désigne ici le Mac qui héberge la centrale (désormais celui de Clara), dont les règles « sans état persistant » restent inchangées. Sur iPhone, « Face ID » se lit « biométrie (Face ID ou Touch ID) » et le mode `faceID` devient `biometrie` dans le code (valeur stockée inchangée). Voir `CLAUDE.md` §5 et §6.
+
 > **Statut : proposition préparée avec Claude le 23/11/2026 (version 2), à relire et valider par Clara.**
 > Les identifiants (ARCH-1, IOS-2, etc.) renvoient au fichier `BACKLOG.md`.
 
@@ -7,8 +9,8 @@
 
 - Le travail se fait **uniquement pendant les séances**.
 - Les Macs sont **prêtés en séance et changent à chaque séance**.
-- Les Macs prêtés ont **Xcode 27.2**, la version utilisée par le groupe. Le MacBook de Clara (Xcode 16.2) n'est pas utilisé pour le développement.
-- Le groupe dispose de **4 iPhones** : iPhone 17 (iOS 27.2.1), iPhone 17 Pro Max (iOS 27.2.1), iPhone 14 (iOS 27.0.1) et l'iPhone 11 Pro Max de Rachel (iOS 17.4.1).
+- ~~Les Macs prêtés ont Xcode 27.2~~ **Remplacé le 26/11 (PM-11)** : les Macs prêtés ne peuvent pas connecter de compte iCloud, l'app n'y est pas installable. Le groupe utilise **Xcode 16.2 sur le MacBook Air de Clara**.
+- ~~4 iPhones~~ **Mise à jour 26/11 (PM-11)** : seuls l'**iPhone 7 de Clara (iOS 15.8.7)** et l'iPhone 11 Pro Max (iOS 17.4.1, disponible de temps en temps) sont utilisables. Les iPhone 17, 17 Pro Max et 14 (iOS 27) sont exclus : leur iOS est trop récent pour Xcode 16.2 (hypothèse non testée).
 - Choix techniques : SwiftUI, MVVM, Swift Testing, code en français.
 - Équipe : **trois développeurs** (Rachel, Eva, Onur), Clara cheffe de projet **et red team** (rôle fixe, il ne tourne pas ; confirmé par le professeur), Aida architecte sécurité.
 - Clara aura **un AirTag le 24/11**.
@@ -32,7 +34,7 @@ Les 12 heures ne permettent pas de tout construire. Voici une proposition de dé
 
 | Niveau | Contenu | Échéance |
 |---|---|---|
-| **Niveau 1 : MVP iPhone (indispensable)** | Balayage Bluetooth d'environ 30 s à la demande, liste des appareils, liste de confiance chiffrée avec Face ID, niveaux info et alerte (IOS-1 à IOS-3, IOS-5, TRU-1 à TRU-3, TRU-5, QA-1, QA-2, RT-1 à RT-3) | Fin du 24/11 |
+| **Niveau 1 : MVP iPhone (indispensable)** | Balayage Bluetooth d'environ 30 s à la demande, liste des appareils, liste de confiance chiffrée avec biométrie, niveaux info et alerte (IOS-1 à IOS-3, IOS-5, TRU-1 à TRU-3, TRU-5, QA-1, QA-2, RT-1 à RT-3) | Fin du 24/11 |
 | **Niveau 2 : chaîne sécurisée (objectif)** | App Mac (centrale), appairage par QR code, canal chiffré, événements signés, protections des données de l'iPhone, purge de la centrale en fin de séance (MAC-1 à MAC-4, MAC-7, TRU-4, QA-3, SEC-6, RT-4) | Fin du 25/11 |
 | **Niveau 3 : si le temps le permet** | Niveau « critique » par détection d'un traceur type Find My, comparaison entre balayages, position au moment du balayage, hachage des identifiants et purge automatique, notifications locales (IOS-4, IOS-6 à IOS-9, TRU-6, MAC-5, MAC-6) | Seulement s'il reste du temps ; sinon présenté dans le dossier comme évolution prévue |
 
@@ -58,7 +60,7 @@ Les 12 heures ne permettent pas de tout construire. Voici une proposition de dé
 | Horaire | Activité | Tâches |
 |---|---|---|
 | 9h00-9h45 | Test avec l'AirTag sur un iPhone : ce que le Bluetooth expose réellement | ARCH-6 |
-| 9h00-12h30 | En parallèle : Rachel (balayage et niveaux), Eva (liste de confiance, Face ID), Onur (app Mac et appairage), Aida (plan de tests, relecture), Clara (scénarios et outils d'attaque) | IOS-2, IOS-3, IOS-5, TRU-1 à TRU-3, MAC-1, MAC-2, SEC-5, RT-2 |
+| 9h00-12h30 | En parallèle : Rachel (balayage et niveaux), Eva (liste de confiance, biométrie), Onur (app Mac et appairage), Aida (plan de tests, relecture), Clara (scénarios et outils d'attaque) | IOS-2, IOS-3, IOS-5, TRU-1 à TRU-3, MAC-1, MAC-2, SEC-5, RT-2 |
 | 12h30-13h00 | Intégration, vérification que le MVP tourne, attaque du MVP par Clara, push, journaux, déconnexion des Macs | PM-9, RT-3 |
 
 ### Mercredi 25/11, 14h-18h : J4, audit croisé
@@ -91,9 +93,9 @@ Les 12 heures ne permettent pas de tout construire. Voici une proposition de dé
 
 | Risque | Conséquence | Mesure proposée |
 |---|---|---|
-| Un Mac différent à chaque séance | Rien ne persiste sur la machine : historique, clés d'appairage, comptes | Git comme seule mémoire du projet ; centrale sans état persistant (ARCH-7) ; se déconnecter avant de rendre le Mac (PM-9) |
+| Un Mac différent à chaque séance | Rien ne persiste sur la machine : historique, clés d'appairage, comptes | Git comme seule mémoire du projet ; centrale sans état persistant (ARCH-7) ; tout est poussé sur Git (PM-9 ; les Macs prêtés ne servent plus) |
 | MacBook de Clara non utilisé | Aucun Mac constant : tout le développement a lieu en séance | Le travail hors séance se limite aux tâches sans Mac (section 5) |
-| Installation sur l'iPhone 11 Pro Max de Rachel (iOS 17.4.1) avec Xcode 27.2 non vérifiée | Version minimale d'iOS 17 décidée ; si l'installation est impossible, il reste trois iPhones en iOS 27 | Tester dès que possible. **Hypothèse non testée** |
+| Installation sur iPhone 7 (iOS 15.8.7) avec Xcode 16.2 non vérifiée ; un seul développeur peut compiler | Version minimale d'iOS 15 décidée le 26/11 ; l'iPhone 11 Pro Max sert de second appareil | Tester dès la première compilation (fiche `TESTS_PAR_PR.md`). **Hypothèse non testée** |
 | Seulement 12 heures de développement | Périmètre trop large | Trois niveaux de priorité ; arbitrage aujourd'hui |
 | Clara cumule cheffe de projet et red team | Surcharge, surtout le 25/11 (audit de l'autre groupe, attaque de notre chaîne, vidéo de secours, coordination) | Grille d'audit préparée hors séance (SEC-7) ; Aida épaule l'audit ; RT-4 (P2) sacrifiable ; PM-10 confiée à un développeur |
 | Onur porte seul la chaîne sécurisée (MAC-1 à MAC-7) | Retard sur le canal chiffré et les événements signés | MAC-5 et MAC-6 en P3 ; repli du niveau 2 (section 3) ; Aida peut l'aider à concevoir, sans écrire le code |
