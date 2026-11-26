@@ -69,7 +69,7 @@ struct ListeDeConfianceTests {
                     date: Date(timeIntervalSince1970: TimeInterval(index)),
                     action: .ajout,
                     nomAppareil: "appareil \(index)",
-                    mode: .faceID
+                    mode: .biometrie
                 )
             )
         }

@@ -4,7 +4,7 @@ import Foundation
 enum ResultatModificationListe: Equatable {
     /// La liste a été modifiée, signée et enregistrée.
     case reussie
-    /// L'utilisateur n'a pas été authentifié (Face ID échoué ou code incorrect). Rien n'a été écrit.
+    /// L'utilisateur n'a pas été authentifié (biométrie échouée ou code incorrect). Rien n'a été écrit.
     case echecAuthentification
     /// Erreur technique ou d'intégrité. Rien n'a été écrit.
     case erreurSysteme

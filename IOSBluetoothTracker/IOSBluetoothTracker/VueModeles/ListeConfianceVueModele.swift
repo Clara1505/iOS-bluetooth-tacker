@@ -1,17 +1,17 @@
 import Foundation
-import Observation
 
 /// Vue-modèle de l'écran de la liste de confiance .
+///
+/// `ObservableObject` et non `@Observable` : la cible minimale est iOS 15 (PM-11).
 @MainActor
-@Observable
-final class ListeConfianceVueModele {
+final class ListeConfianceVueModele: ObservableObject {
 
     /// Contenu de la dernière lecture réussie de la liste.
-    private(set) var contenu = ContenuListe()
+    @Published private(set) var contenu = ContenuListe()
     /// `true` si la liste n'a pas pu être lue ou vérifiée : l'écran ne doit pas afficher « liste vide ».
-    private(set) var listeIllisible = false
+    @Published private(set) var listeIllisible = false
     /// Message d'erreur de la dernière suppression, ou `nil`.
-    private(set) var messageErreur: String?
+    @Published private(set) var messageErreur: String?
 
     private let stockage: StockageListeDeConfiance
     private let modificateur: ModificateurListeDeConfiance

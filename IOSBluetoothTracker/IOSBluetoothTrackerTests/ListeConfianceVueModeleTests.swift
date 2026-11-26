@@ -39,12 +39,12 @@ struct ListeConfianceVueModeleTests {
 
     private func fabriquer(_ stockage: StockageEnMemoire) throws -> ListeConfianceVueModele {
         try stockage.modifier(
-            entree: EntreeHistorique(date: date, action: .ajout, nomAppareil: "Sac", mode: .faceID)
+            entree: EntreeHistorique(date: date, action: .ajout, nomAppareil: "Sac", mode: .biometrie)
         ) { $0.appareils.append(appareil) }
         return ListeConfianceVueModele(
             stockage: stockage,
             modificateur: ModificateurListeDeConfiance(stockage: stockage),
-            mode: { .faceID },
+            mode: { .biometrie },
             maintenant: { date }
         )
     }

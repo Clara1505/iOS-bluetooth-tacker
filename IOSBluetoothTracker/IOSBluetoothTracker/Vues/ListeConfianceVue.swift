@@ -2,15 +2,17 @@ import SwiftUI
 
 /// Écran de la liste de confiance : appareils de l'utilisateur et historique des modifications.
 struct ListeConfianceVue: View {
-    @State private var vueModele: ListeConfianceVueModele
+    @StateObject private var vueModele: ListeConfianceVueModele
 
     /// - Parameter vueModele: vue-modèle de la liste.
     init(vueModele: ListeConfianceVueModele) {
-        _vueModele = State(initialValue: vueModele)
+        _vueModele = StateObject(wrappedValue: vueModele)
     }
 
     var body: some View {
-        NavigationStack {
+        // NavigationView : NavigationStack demande iOS 16 (cible minimale iOS 15, PM-11).
+        // Le style .stack évite l'affichage en deux colonnes sur grand écran.
+        NavigationView {
             List {
                 if vueModele.listeIllisible {
                     // Jamais « liste vide » quand la liste n'a pas pu être vérifiée.
@@ -62,6 +64,7 @@ struct ListeConfianceVue: View {
             .navigationTitle("Appareils de confiance")
             .onAppear { vueModele.charger() }
         }
+        .navigationViewStyle(.stack)
     }
 }
 
@@ -79,7 +82,7 @@ extension ModeAuthentification {
     /// Libellé affiché dans l'historique.
     var libelle: String {
         switch self {
-        case .faceID: return "Face ID"
+        case .biometrie: return "biométrie"
         case .code: return "code"
         }
     }

@@ -7,14 +7,14 @@ import SwiftUI
 
 /// Écran principal : bouton « Contrôle de sécurité » et résultat du dernier contrôle.
 struct BalayageVue: View {
-    @State private var vueModele: BalayageVueModele
+    @StateObject private var vueModele: BalayageVueModele
 
     /// - Parameters:
     ///   - service: service de balayage à utiliser.
     ///   - verificateur: vérificateur de la liste de confiance, ou `nil` si elle n'est pas disponible
     ///     (tout appareil est alors traité comme inconnu).
     init(service: any ServiceBalayage, verificateur: VerificateurConfiance? = nil) {
-        _vueModele = State(initialValue: BalayageVueModele(service: service, verificateur: verificateur))
+        _vueModele = StateObject(wrappedValue: BalayageVueModele(service: service, verificateur: verificateur))
     }
 
     var body: some View {

@@ -10,7 +10,7 @@ protocol StockageListeDeConfiance {
     func lire() throws -> ContenuListe
 
     /// Modifie la liste : ajoute l'entrée d'historique, applique la transformation, rechiffre et signe.
-    /// La Secure Enclave demande Face ID ou le code de l'iPhone avant de signer.
+    /// La Secure Enclave demande la biométrie (Face ID ou Touch ID) ou le code de l'iPhone avant de signer.
     /// - Parameters:
     ///   - entree: entrée d'historique correspondant à la modification.
     ///   - transformation: modification à appliquer au contenu.

@@ -44,7 +44,7 @@ struct ModificateurListeTests {
             nomBrut: "Sac",
             idHache: idHache,
             date: date,
-            mode: .faceID
+            mode: .biometrie
         )
 
         #expect(resultat == .echecAuthentification)
@@ -78,7 +78,7 @@ struct ModificateurListeTests {
                 nomBrut: "Été",
                 idHache: idHache,
                 date: date,
-                mode: .faceID
+                mode: .biometrie
             )
         }
         #expect(faux.appelsModifier == 0)
@@ -88,13 +88,13 @@ struct ModificateurListeTests {
     func suppressionReussie() throws {
         let faux = FauxStockage()
         let modificateur = ModificateurListeDeConfiance(stockage: faux)
-        _ = try modificateur.ajouterAppareil(nomBrut: "Sac", idHache: idHache, date: date, mode: .faceID)
+        _ = try modificateur.ajouterAppareil(nomBrut: "Sac", idHache: idHache, date: date, mode: .biometrie)
 
         let resultat = modificateur.supprimerAppareil(
             nomAppareil: "Sac",
             idHache: idHache,
             date: date,
-            mode: .faceID
+            mode: .biometrie
         )
 
         #expect(resultat == .reussie)

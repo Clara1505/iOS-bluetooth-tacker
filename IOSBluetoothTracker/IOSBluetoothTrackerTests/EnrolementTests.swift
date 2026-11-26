@@ -53,7 +53,7 @@ struct EnrolementTests {
         EnrolementVueModele(
             modificateur: ModificateurListeDeConfiance(stockage: stockage),
             hacheur: HacheurFictif(),
-            mode: { .faceID },
+            mode: { .biometrie },
             maintenant: { Date(timeIntervalSince1970: 1_800_000_100) }
         )
     }

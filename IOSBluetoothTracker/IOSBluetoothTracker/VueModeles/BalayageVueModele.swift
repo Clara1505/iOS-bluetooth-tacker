@@ -4,19 +4,20 @@
 //
 
 import Foundation
-import Observation
 
 /// Vue-modèle de l'écran de contrôle de sécurité.
+///
+/// `ObservableObject` et non `@Observable` : la macro `@Observable` demande iOS 17,
+/// alors que la cible minimale du projet est iOS 15 (PM-11).
 @MainActor
-@Observable
-final class BalayageVueModele {
+final class BalayageVueModele: ObservableObject {
     /// Résultat du dernier contrôle, ou `nil` si aucun contrôle n'a encore été lancé.
-    private(set) var resultat: ResultatBalayage?
+    @Published private(set) var resultat: ResultatBalayage?
     /// Appareils du dernier contrôle complet, avec leur niveau d'alerte.
     /// Vide si le contrôle a été impossible (D4 : pas d'évaluation sans balayage complet).
-    private(set) var evaluations: [AppareilEvalue] = []
+    @Published private(set) var evaluations: [AppareilEvalue] = []
     /// `true` pendant un balayage, pour désactiver le bouton.
-    private(set) var enCours = false
+    @Published private(set) var enCours = false
     private let service: any ServiceBalayage
     /// Vérificateur de la liste de confiance, ou `nil` tant que la liste n'est pas disponible.
     private let verificateur: VerificateurConfiance?

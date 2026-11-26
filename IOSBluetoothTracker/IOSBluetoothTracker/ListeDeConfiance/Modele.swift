@@ -17,8 +17,12 @@ enum ActionHistorique: String, Codable {
 }
 
 /// Mode d'authentification utilisé pour une modification (R2).
+///
+/// `biometrie` couvre Face ID et Touch ID (l'iPhone 7 n'a que Touch ID, PM-11).
+/// La valeur sérialisée reste « faceID » : le format stocké et signé ne change pas,
+/// donc les listes et historiques déjà écrits restent lisibles et leur signature valide.
 enum ModeAuthentification: String, Codable {
-    case faceID
+    case biometrie = "faceID"
     case code
 }
 
@@ -59,7 +63,7 @@ enum ErreurListeDeConfiance: Error, Equatable {
     case signatureInvalide
     /// La version lue est plus ancienne que celle mémorisée : retour arrière refusé.
     case versionPerimee
-    /// L'authentification (Face ID ou code) a échoué ou été annulée.
+    /// L'authentification (biométrie ou code) a échoué ou été annulée.
     case authentificationEchouee
     /// Erreur d'un composant système (Keychain, Secure Enclave).
     case erreurSysteme

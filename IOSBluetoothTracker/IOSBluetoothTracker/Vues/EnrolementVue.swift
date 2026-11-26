@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Écran pour nommer un appareil détecté et l'ajouter à la liste de confiance .
 struct EnrolementVue: View {
-    @State private var vueModele: EnrolementVueModele
+    @StateObject private var vueModele: EnrolementVueModele
     @Environment(\.dismiss) private var fermer
     private let appareil: AppareilDetecte
 
@@ -11,14 +11,14 @@ struct EnrolementVue: View {
     ///   - vueModele: vue-modèle de l'enrôlement.
     init(appareil: AppareilDetecte, vueModele: EnrolementVueModele) {
         self.appareil = appareil
-        _vueModele = State(initialValue: vueModele)
+        _vueModele = StateObject(wrappedValue: vueModele)
     }
 
     var body: some View {
         Form {
             Section {
                 TextField("Ex. : Sac bleu", text: $vueModele.nomSaisi)
-                    .autocorrectionDisabled()
+                    .disableAutocorrection(true)
             } header: {
                 Text("Nom de l'appareil")
             } footer: {

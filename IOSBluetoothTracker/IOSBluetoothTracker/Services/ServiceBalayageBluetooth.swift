@@ -43,7 +43,7 @@ final class ServiceBalayageBluetooth: NSObject, ServiceBalayage {
         )
 
         do {
-            try await Task.sleep(for: .seconds(duree))
+            try await Attente.dormir(secondes: duree)
         } catch {
             // Tâche annulée : le balayage n'est pas complet (D4).
             gestionnaire.stopScan()

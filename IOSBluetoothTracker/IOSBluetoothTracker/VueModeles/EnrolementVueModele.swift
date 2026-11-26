@@ -1,10 +1,10 @@
 import Foundation
-import Observation
 
 /// Vue-modèle de l'enrôlement : nommer un de ses propres appareils pour l'ajouter à la liste de confiance (TRU-1).
+///
+/// `ObservableObject` et non `@Observable` : la cible minimale est iOS 15 (PM-11).
 @MainActor
-@Observable
-final class EnrolementVueModele {
+final class EnrolementVueModele: ObservableObject {
 
     /// État de l'enrôlement affiché à l'utilisateur.
     enum Etat: Equatable {
@@ -16,8 +16,8 @@ final class EnrolementVueModele {
     }
 
     /// Nom saisi par l'utilisateur, validé seulement à l'ajout.
-    var nomSaisi = ""
-    private(set) var etat: Etat = .saisie
+    @Published var nomSaisi = ""
+    @Published private(set) var etat: Etat = .saisie
 
     private let modificateur: ModificateurListeDeConfiance
     private let hacheur: HacheurIdentifiant
@@ -42,7 +42,7 @@ final class EnrolementVueModele {
     }
 
     /// Ajoute l'appareil à la liste de confiance sous le nom saisi.
-    /// L'authentification (Face ID ou code) est demandée par la Secure Enclave au moment de la signature.
+    /// L'authentification (biométrie ou code du téléphone) est demandée par la Secure Enclave au moment de la signature.
     func enroler(_ appareil: AppareilDetecte) {
         let idHache = hacheur.hacher(appareil.identifiantSysteme)
         do {
